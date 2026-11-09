@@ -35,7 +35,7 @@ export const events = defineSource({
   },
   options: t.object({
     urls: t.list(
-      t.string({ secret: true, format: 'url', placeholder: 'https://outlook.office365.com/owa/calendar/…/calendar.ics', label: { en: 'ICS address', es: 'Dirección ICS' } }),
+      t.string({ secret: true, format: 'url', risk: 'network', placeholder: 'https://outlook.office365.com/owa/calendar/…/calendar.ics', label: { en: 'ICS address', es: 'Dirección ICS' } }),
       {
         max: 10,
         label: { en: 'Calendars (ICS addresses)', es: 'Calendarios (direcciones ICS)' },
