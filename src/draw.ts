@@ -30,6 +30,37 @@ function weekday(ms: number, locale: string): string {
   }
 }
 
+/**
+ * The big countdown: "18 min" with the number big and the unit small, which
+ * reads at a glance where a monospaced "18 min" gives the unit as much weight
+ * as the number. A word ("now") or a clock time stays whole.
+ */
+function bigText(p: Painter, text: string, family: string) {
+  const { g, kit } = p;
+  const split = /\d/.test(text) && /\p{L}/u.test(text);
+  const parts = split ? text.split(' ').map((s) => ({ s, small: !/\d/.test(s) })) : [{ s: text, small: false }];
+  const opts = (size: number, small: boolean) => ({ size: small ? Math.round(size * 0.42) : size, family });
+  const width = (size: number) => parts.reduce((a, part) => a + kit.measureTracked(g, part.s, opts(size, part.small)), 0) + size * 0.16 * (parts.length - 1);
+  return {
+    /** Largest size up to `max` that fits `maxW`. */
+    fit: (max: number, maxW: number) => {
+      let size = Math.round(max);
+      while (size > 12 && width(size) > maxW) size--;
+      return size;
+    },
+    width,
+    /** Draws with the baseline at `base`; returns the width. */
+    draw: (x: number, base: number, size: number, color: string, align: 'left' | 'right' = 'left') => {
+      const total = width(size);
+      let cx = align === 'right' ? x - total : x;
+      for (const part of parts) {
+        cx += kit.drawTracked(g, part.s, cx, base, { ...opts(size, part.small), color }) + size * 0.16;
+      }
+      return total;
+    },
+  };
+}
+
 /** A centred line (and an optional hint below it) for "nothing to show". */
 export function drawMessage(p: Painter, box: Box, text: string, sub?: string): void {
   const { g, kit, theme } = p;
@@ -133,15 +164,15 @@ export function drawNext(p: Painter, box: Box, m: Meeting, o: Thresholds & { sho
     // Text on the left, the countdown on the right.
     const gap = Math.round(clamp(h * 0.15, 8, 32));
     const bw = Math.min(w * 0.45, h * 2.6);
-    const bigO = { size: Math.round(clamp(h * 0.6, 16, 160)), family: f.monoBold, color: ink.big, align: 'right' as const };
-    bigO.size = kit.fitSize(g, big, bw, bigO, 12);
+    const bt = bigText(p, big, f.monoBold);
+    const B = bt.fit(clamp(h * 0.6, 16, 160), bw);
     const subO = { size: L, family: f.sans, color: ink.mid, align: 'right' as const };
-    const blockH = bigO.size * 0.74 + (sub ? L * 1.7 : 0);
-    const bigBase = y + (h - blockH) / 2 + bigO.size * 0.74;
-    kit.drawTracked(g, big, x + w, bigBase, bigO);
+    const blockH = B * 0.74 + (sub ? L * 1.7 : 0);
+    const bigBase = y + (h - blockH) / 2 + B * 0.74;
+    const bigW = bt.draw(x + w, bigBase, B, ink.big, 'right');
     if (sub) kit.drawTracked(g, kit.truncate(g, sub, bw, subO), x + w, bigBase + L * 1.7, subO);
 
-    const lw = Math.max(0, w - Math.max(bw, kit.measureTracked(g, big, bigO)) - gap);
+    const lw = Math.max(0, w - Math.max(bigW, sub ? kit.measureTracked(g, sub, subO) : 0) - gap);
     kit.drawTracked(g, kit.truncate(g, label, lw, labelO), x, y + L * 0.9, labelO);
     textBlock(x, lw, y + L * 1.4, y + h, h * 0.26, who ? `${range} · ${who}` : range);
     return;
@@ -158,16 +189,16 @@ export function drawNext(p: Painter, box: Box, m: Meeting, o: Thresholds & { sho
     kit.drawTracked(g, kit.truncate(g, range, w, metaO), x, y + L * 0.9, metaO);
   }
 
-  const bigO = { size: Math.round(clamp(h * 0.4, 16, 150)), family: f.monoBold, color: ink.big };
-  bigO.size = kit.fitSize(g, big, w, bigO, 12);
-  const bigBase = y + h - Math.round(bigO.size * 0.06);
-  const bigW = kit.drawTracked(g, big, x, bigBase, bigO);
+  const bt = bigText(p, big, f.monoBold);
+  const B = bt.fit(clamp(h * 0.4, 16, 150), w);
+  const bigBase = y + h - Math.round(B * 0.06);
+  const bigW = bt.draw(x, bigBase, B, ink.big);
   // "ends in 25 min" beside "now" if there's room, else above it with the attendees' line.
   const subO = { size: Math.max(10, Math.round(L * 1.05)), family: f.sans, color: ink.mid, align: 'right' as const };
   const subBeside = !!sub && bigW + L + kit.measureTracked(g, sub, subO) <= w;
   if (subBeside) kit.drawTracked(g, sub, x + w, bigBase, subO);
   const meta = sub && !subBeside ? sub : who;
-  textBlock(x, w, y + L * 1.5, bigBase - bigO.size * 0.74 - Math.max(4, bigO.size * 0.12), h * 0.17, meta);
+  textBlock(x, w, y + L * 1.5, bigBase - B * 0.74 - Math.max(4, B * 0.12), h * 0.17, meta);
 }
 
 interface Section {
@@ -226,28 +257,32 @@ export function drawAgenda(p: Painter, box: Box, meetings: readonly Meeting[], o
     const tx = x + inset;
     const timeW = kit.drawTracked(g, hhmm(m.startsAt), tx, base, { ...timeO, color: live ? c.info : c.inkDim });
     // The one under way says when it ends; the next one, when it starts.
-    let side = '';
+    // Short form ("18 min") when the long one would squeeze the title.
+    let full = '';
+    let short = '';
     let sideColor = c.inkDim;
     if (live) {
-      side = `${tr(TEXTS.endsIn)} ${countdown(m.endsAt - now)}`;
+      short = countdown(m.endsAt - now);
+      full = `${tr(TEXTS.endsIn)} ${short}`;
       sideColor = c.info;
     } else if (m === first) {
       const left = m.startsAt - now;
-      side = `${tr(TEXTS.in)} ${countdown(left)}`;
+      short = countdown(left);
+      full = `${tr(TEXTS.in)} ${short}`;
       sideColor = left <= o.alertMin * 60_000 ? c.alert : left <= o.warnMin * 60_000 ? c.warn : c.inkDim;
     }
     const right = x + w - inset;
-    let sideW = side ? kit.measureTracked(g, side, sideO) : 0;
-    if (side && sideW > w * 0.4) {
-      side = side.replace(/^\S+\s+/, ''); // "12 min" without "in"/"ends in"
-      sideW = kit.measureTracked(g, side, sideO);
-      if (sideW > w * 0.4) side = '';
-    }
-    if (side) kit.drawTracked(g, side, right, base, { ...sideO, color: sideColor });
     const titleX = tx + timeW + R * 0.6;
-    const titleW = right - titleX - (side ? sideW + R * 0.6 : 0);
     const text = displayTitle(m, tr) + (m.tentative ? ' (?)' : '');
     const to = { ...titleO, color: m.tentative ? c.inkDim : c.ink };
+    const textW = kit.measureTracked(g, text, to);
+    const widthOf = (s: string) => (s ? kit.measureTracked(g, s, sideO) : 0);
+    let side = full;
+    if (side && (widthOf(full) > w * 0.4 || titleX + textW + R * 0.6 + widthOf(full) > right)) side = short;
+    if (side && widthOf(side) > w * 0.4) side = '';
+    const sideW = widthOf(side);
+    if (side) kit.drawTracked(g, side, right, base, { ...sideO, color: sideColor });
+    const titleW = right - titleX - (side ? sideW + R * 0.6 : 0);
     if (titleW > R) kit.drawTracked(g, kit.truncate(g, text, titleW, to), titleX, base, to);
   };
 
