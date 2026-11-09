@@ -1,0 +1,11 @@
+{
+  "name": "@tessera/plugin-calendar",
+  "version": "0.1.0",
+  "description": "Meetings from published ICS calendars (Outlook/Teams, Google, iCloud…) as a shared source, a big countdown to the next one and the agenda of today and tomorrow.",
+  "type": "module",
+  "license": "MIT",
+  "exports": { ".": { "source": "./src/index.ts", "default": "./dist/index.js" } },
+  "tessera": { "plugin": "./dist/index.js" },
+  "peerDependencies": { "@tessera/sdk": "*", "ical.js": "^2.2.1" },
+  "peerDependenciesMeta": { "ical.js": { "optional": true } }
+}
