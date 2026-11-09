@@ -1,8 +1,8 @@
 /**
  * A believable working day for the gallery and the editor, derived from
- * `now` only (so the same instant always draws the same card): a stand-up
- * already over, a review under way, a one-to-one coming up, a tentative
- * session after lunch, and tomorrow's first meetings. Generic names only.
+ * `now` only (so the same instant always draws the same card): a review
+ * under way, a one-to-one coming up, a tentative workshop later and
+ * tomorrow's planning. Generic names only.
  */
 import { localize } from '@tessera/sdk';
 import type { Meeting } from './ics.ts';
@@ -16,13 +16,10 @@ export function demoMeetings(now: number, locale = 'en', o: { current?: boolean 
   const d = new Date(now);
   const tomorrowAt = (h: number, m: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, h, m).getTime();
   const all: Meeting[] = [
-    { title: tr('Daily stand-up', 'Daily'), startsAt: base - 75 * MIN, endsAt: base - 60 * MIN },
     { title: tr('Design review', 'Revisión de diseño'), startsAt: base, endsAt: base + 30 * MIN, attendees: ['Alex', 'Sam', 'Kim'] },
     { title: tr('1:1 with Jordan', '1:1 con Jordan'), startsAt: base + 30 * MIN, endsAt: base + 60 * MIN, attendees: ['Jordan'] },
     { title: tr('Roadmap workshop', 'Taller de hoja de ruta'), startsAt: base + 180 * MIN, endsAt: base + 240 * MIN, tentative: true },
-    { title: tr('Daily stand-up', 'Daily'), startsAt: tomorrowAt(9, 30), endsAt: tomorrowAt(9, 45) },
-    { title: tr('Quarterly planning', 'Planificación trimestral'), startsAt: tomorrowAt(11, 0), endsAt: tomorrowAt(12, 30), attendees: ['Alex', 'Jordan', 'Robin', 'Sam', 'Taylor'] },
-    { title: 'Dentist', startsAt: tomorrowAt(16, 0), endsAt: tomorrowAt(17, 0), private: true },
+    { title: tr('Quarterly planning', 'Planificación trimestral'), startsAt: tomorrowAt(9, 30), endsAt: tomorrowAt(11, 0), attendees: ['Alex', 'Jordan', 'Robin', 'Sam', 'Taylor'] },
   ];
   // Without the one under way, a single tile shows a countdown instead of "now".
   return o.current === false ? all.filter((m) => !(m.startsAt <= now && m.endsAt > now)) : all;
