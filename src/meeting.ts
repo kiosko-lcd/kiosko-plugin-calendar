@@ -100,7 +100,7 @@ export const TEXTS = {
   meeting: { en: 'Meeting', es: 'Reunión' },
   private: { en: 'Private meeting', es: 'Reunión privada' },
   tentative: { en: 'tentative', es: 'provisional' },
-  now: { en: 'Now', es: 'Ahora' },
+  inProgress: { en: 'In progress', es: 'En curso' },
   next: { en: 'Next', es: 'Siguiente' },
   today: { en: 'Today', es: 'Hoy' },
   tomorrow: { en: 'Tomorrow', es: 'Mañana' },

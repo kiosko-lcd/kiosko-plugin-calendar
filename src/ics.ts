@@ -112,14 +112,41 @@ function claims(sub: any): boolean {
 }
 
 /**
- * Safety cap on the occurrences walked per series. A malformed rule could
- * iterate forever, but the cap must stay high: the walk starts at the
- * series' first occurrence, and a weekday stand-up created three years ago
- * is already ~800 occurrences before today.
+ * Safety cap on the occurrences walked per series: a malformed rule could
+ * iterate forever. High on purpose: the old cap of 500 silently lost a
+ * daily series created two years earlier, whose walk never reached today.
  */
 const MAX_OCCURRENCES = 20_000;
 /** Keep walking a little past the window: an occurrence moved earlier into it is found by its original slot. */
 const MOVED_SLACK_MS = 7 * 86_400_000;
+const DAY_MS = 86_400_000;
+
+/**
+ * Where to start walking a series. Walking costs tens of microseconds per
+ * occurrence, and a real feed carries dozens of daily and weekly series
+ * started years ago: walked from their first occurrence every five minutes,
+ * they would freeze the panel for seconds. A plain daily or weekly rule
+ * repeats exactly every `INTERVAL` days or weeks of wall-clock time, so its
+ * start can jump forward by whole periods to just before `before` without
+ * changing a single occurrence. Rules with `COUNT` (counted from the first
+ * one), several rules, or other frequencies are walked from the start
+ * (monthly and yearly series are short anyway).
+ */
+function walkStart(ev: any, before: number): any {
+  const rules = ev.component.getAllProperties('rrule');
+  if (rules.length !== 1) return undefined;
+  const rule = rules[0].getFirstValue();
+  if (!rule || rule.count) return undefined;
+  const days = rule.freq === 'DAILY' ? 1 : rule.freq === 'WEEKLY' ? 7 : 0;
+  if (!days) return undefined;
+  const period = days * Math.max(1, rule.interval || 1);
+  const start = ev.startDate;
+  const periods = Math.floor(Math.floor((before - start.toUnixTime() * 1000) / DAY_MS) / period);
+  if (periods <= 0) return undefined;
+  const moved = start.clone();
+  moved.adjust(periods * period, 0, 0, 0);
+  return moved;
+}
 
 /**
  * Meetings that overlap `[from, until]`, in order. Left out: all-day events,
@@ -129,7 +156,7 @@ const MOVED_SLACK_MS = 7 * 86_400_000;
  *
  * Throws when `ics` isn't iCalendar at all; a single broken event is skipped.
  */
-export function parseMeetings(ICAL: IcalModule, ics: string, o: { ignore: readonly string[] }, from: number, until: number): Meeting[] {
+export function parseMeetings(ICAL: IcalModule, ics: string, o: { ignore: readonly string[]; /** Tests only: walk every series from its first occurrence. */ walkFromStart?: boolean }, from: number, until: number): Meeting[] {
   const comp = new ICAL.Component(ICAL.parse(ics));
   registerTimezones(ICAL, comp);
 
@@ -191,11 +218,17 @@ export function parseMeetings(ICAL: IcalModule, ics: string, o: { ignore: readon
       add(ev, ev.startDate, ev.endDate);
       continue;
     }
-    const it = ev.iterator();
+    // Occurrences that ended well before the window are skipped without
+    // resolving them (`toUnixTime` is cheap, `toJSDate` and details are not).
+    const length = ev.endDate && ev.startDate ? Math.max(0, ev.endDate.toUnixTime() - ev.startDate.toUnixTime()) * 1000 : 0;
+    const before = from - length - MOVED_SLACK_MS;
+    const it = ev.iterator(o.walkFromStart ? undefined : walkStart(ev, before));
     let next: any;
     let guard = 0;
     while ((next = it.next()) && guard++ < MAX_OCCURRENCES) {
-      if (next.toJSDate().getTime() > until + MOVED_SLACK_MS) break;
+      const t = next.toUnixTime() * 1000;
+      if (t > until + MOVED_SLACK_MS) break;
+      if (t < before) continue;
       try {
         const d = ev.getOccurrenceDetails(next);
         add(d.item, d.startDate, d.endDate);

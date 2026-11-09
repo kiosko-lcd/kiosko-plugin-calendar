@@ -65,16 +65,15 @@ function bigText(p: Painter, text: string, family: string) {
 export function drawMessage(p: Painter, box: Box, text: string, sub?: string): void {
   const { g, kit, theme } = p;
   const size = Math.round(clamp(box.h / 5, 11, 28));
-  const subSize = Math.max(10, Math.round(size * 0.7));
-  const withSub = !!sub && box.h >= size * 2.8;
-  const block = size * 0.75 + (withSub ? subSize * 1.6 : 0);
+  const so = { size: Math.max(10, Math.round(size * 0.7)), family: theme.fonts.sans, color: theme.colors.inkFaint, align: 'center' as const };
+  const lead = so.size * 1.35;
+  // The hint wraps to two lines on narrow tiles rather than losing its end.
+  const subLines = sub && box.h >= size * 2.8 ? kit.wrapLines(g, sub, box.w, box.h >= size * 2.8 + lead ? 2 : 1, so) : [];
+  const block = size * 0.75 + (subLines.length ? so.size * 0.6 + subLines.length * lead : 0);
   const base = box.y + (box.h - block) / 2 + size * 0.75;
   const o = { size, family: theme.fonts.sans, color: theme.colors.inkDim, align: 'center' as const };
   kit.drawTracked(g, kit.truncate(g, text, box.w, o), box.x + box.w / 2, base, o);
-  if (withSub) {
-    const so = { ...o, size: subSize, color: theme.colors.inkFaint };
-    kit.drawTracked(g, kit.truncate(g, sub!, box.w, so), box.x + box.w / 2, base + subSize * 1.6, so);
-  }
+  subLines.forEach((line, i) => kit.drawTracked(g, line, box.x + box.w / 2, base + so.size * 0.6 + (i + 1) * lead, so));
 }
 
 /**
@@ -121,7 +120,7 @@ export function drawNext(p: Painter, box: Box, m: Meeting, o: Thresholds & { sho
   }
 
   const label =
-    (started ? tr(TEXTS.now) : days <= 0 ? tr(TEXTS.next) : days === 1 ? tr(TEXTS.tomorrow) : weekday(m.startsAt, p.locale)) +
+    (started ? tr(TEXTS.inProgress) : days <= 0 ? tr(TEXTS.next) : days === 1 ? tr(TEXTS.tomorrow) : weekday(m.startsAt, p.locale)) +
     (m.tentative ? ` · ${tr(TEXTS.tentative)}` : '');
   const range = `${hhmm(m.startsAt)}–${hhmm(m.endsAt)}`;
   const title = displayTitle(m, tr, o.showTitle);
@@ -257,13 +256,14 @@ export function drawAgenda(p: Painter, box: Box, meetings: readonly Meeting[], o
     const tx = x + inset;
     const timeW = kit.drawTracked(g, hhmm(m.startsAt), tx, base, { ...timeO, color: live ? c.info : c.inkDim });
     // The one under way says when it ends; the next one, when it starts.
-    // Short form ("18 min") when the long one would squeeze the title.
+    // A short form when the long one would squeeze the title: the end time
+    // for the one under way ("18 min" alone would read as a start).
     let full = '';
     let short = '';
     let sideColor = c.inkDim;
     if (live) {
-      short = countdown(m.endsAt - now);
-      full = `${tr(TEXTS.endsIn)} ${short}`;
+      short = `–${hhmm(m.endsAt)}`;
+      full = `${tr(TEXTS.endsIn)} ${countdown(m.endsAt - now)}`;
       sideColor = c.info;
     } else if (m === first) {
       const left = m.startsAt - now;
@@ -296,12 +296,13 @@ export function drawAgenda(p: Painter, box: Box, meetings: readonly Meeting[], o
       return headH + rowH;
     }
     const fit = Math.max(1, Math.floor((area.h - headH) / rowH));
-    const shown = s.items.length <= fit ? s.items : s.items.slice(0, fit - 1);
+    // With room for a single row, a meeting says more than "+3 more".
+    const shown = s.items.length <= fit ? s.items : s.items.slice(0, Math.max(1, fit - 1));
     for (const m of shown) {
       row(m, area.x, top, area.w);
       top += rowH;
     }
-    if (shown.length < s.items.length) {
+    if (shown.length < s.items.length && fit >= 2) {
       const mo = { ...titleO, size: Math.round(R * 0.85), color: c.inkDim };
       kit.drawTracked(g, `+${s.items.length - shown.length} ${tr(TEXTS.more)}`, area.x + inset, top + rowH / 2 + R * 0.34, mo);
       top += rowH;
