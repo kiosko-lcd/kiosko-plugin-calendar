@@ -1,11 +1,54 @@
 {
-  "name": "@tessera/plugin-calendar",
+  "name": "tessera-plugin-calendar",
   "version": "0.1.0",
   "description": "Meetings from published ICS calendars (Outlook/Teams, Google, iCloud…) as a shared source, a big countdown to the next one and the agenda of today and tomorrow.",
   "type": "module",
   "license": "MIT",
-  "exports": { ".": { "source": "./src/index.ts", "default": "./dist/index.js" } },
-  "tessera": { "plugin": "./dist/index.js" },
-  "peerDependencies": { "@tessera/sdk": "*", "ical.js": "^2.2.1" },
-  "peerDependenciesMeta": { "ical.js": { "optional": true } }
+  "author": "Loksly",
+  "keywords": [
+    "tessera",
+    "tessera-plugin",
+    "lcd",
+    "widgets",
+    "time"
+  ],
+  "homepage": "https://github.com/Loksly/tessera-plugin-calendar#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Loksly/tessera-plugin-calendar.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Loksly/tessera-plugin-calendar/issues"
+  },
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "tessera": {
+    "plugin": "./dist/index.js",
+    "id": "calendar"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --conditions=source --test \"src/**/*.test.ts\"",
+    "check": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@tessera/sdk": "^0.1.0",
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.25.0",
+    "ical.js": "^2.2.1",
+    "typescript": "^5.9.3"
+  }
 }
