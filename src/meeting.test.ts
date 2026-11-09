@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { localize, THEMES } from '@tessera/sdk';
+import { localize, THEMES } from '@kiosko/sdk';
 import { agendaNow, countdown, DEFAULT_THRESHOLDS, displayTitle, levelColor, meetingLevel, pickNext } from './meeting.ts';
 
 const MIN = 60_000;

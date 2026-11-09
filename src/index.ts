@@ -10,7 +10,7 @@
  * The source keeps a copy of every feed on disk (named after a hash of the
  * address, which is a secret) and falls back to it when offline.
  */
-import { definePlugin, defineSource, defineWidget, t, type Localized, type RenderContext } from '@tessera/sdk';
+import { definePlugin, defineSource, defineWidget, t, type Localized, type RenderContext } from '@kiosko/sdk';
 import { demoMeetings } from './demo.ts';
 import { drawAgenda, drawMessage, drawNext, type Painter } from './draw.ts';
 import { fetchAll } from './feed.ts';
@@ -203,7 +203,7 @@ export default definePlugin({
     en: 'Meetings from published ICS calendars (Outlook/Teams, Google…): a countdown to the next one and the agenda of today and tomorrow.',
     es: 'Reuniones de calendarios ICS publicados (Outlook/Teams, Google…): una cuenta atrás hasta la siguiente y la agenda de hoy y mañana.',
   },
-  author: 'Tessera',
+  author: 'Kiosko',
   license: 'MIT',
   icon: 'calendar',
   sources: [events],

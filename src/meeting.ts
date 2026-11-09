@@ -3,7 +3,7 @@
  * which meeting a tile should be talking about. Pure functions of the list
  * and the clock, so widgets repaint every minute without asking the source.
  */
-import type { Localized, ThemeColors } from '@tessera/sdk';
+import type { Localized, ThemeColors } from '@kiosko/sdk';
 import type { Meeting } from './ics.ts';
 
 /** Minutes before the start at which the meeting climbs each step of the semaphore. */

@@ -4,7 +4,7 @@
  * under way, a one-to-one coming up, a tentative workshop later and
  * tomorrow's planning. Generic names only.
  */
-import { localize } from '@tessera/sdk';
+import { localize } from '@kiosko/sdk';
 import type { Meeting } from './ics.ts';
 
 const MIN = 60_000;

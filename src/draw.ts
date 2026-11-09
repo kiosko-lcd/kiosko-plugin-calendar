@@ -2,7 +2,7 @@
  * Painting the two calendar cards. Everything is sized from the box it gets,
  * so the same code serves a 320×240 corner and a 1920×462 strip.
  */
-import type { Box, Graphics, Localized, RenderContext, Theme } from '@tessera/sdk';
+import type { Box, Graphics, Localized, RenderContext, Theme } from '@kiosko/sdk';
 import type { Meeting } from './ics.ts';
 import { agendaNow, countdown, dayStart, daysFrom, displayTitle, hhmm, levelColor, meetingLevel, TEXTS, type Thresholds } from './meeting.ts';
 

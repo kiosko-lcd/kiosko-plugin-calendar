@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { defaultsOf, localize, validate } from '@tessera/sdk';
+import { defaultsOf, localize, validate } from '@kiosko/sdk';
 import plugin, { agenda, events, next, type Meeting } from './index.ts';
 import { loadIcal } from './ics.ts';
 
