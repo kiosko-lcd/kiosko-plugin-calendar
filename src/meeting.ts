@@ -3,19 +3,21 @@
  * which meeting a tile should be talking about. Pure functions of the list
  * and the clock, so widgets repaint every minute without asking the source.
  */
-import type { Localized, ThemeColors } from '@kiosko/sdk';
+import { matchFilter, type Localized, type ThemeColors } from '@kiosko/sdk';
 import type { Meeting } from './ics.ts';
 
-/** Minutes before the start at which the meeting climbs each step of the semaphore. */
+/** How long before the start (ms) the meeting climbs each step of the semaphore. */
 export interface Thresholds {
   /** Further away it's drawn faint and lets the panel sleep. */
-  greyMin: number;
-  readyMin: number;
-  warnMin: number;
-  alertMin: number;
+  greyMs: number;
+  readyMs: number;
+  warnMs: number;
+  alertMs: number;
 }
 
-export const DEFAULT_THRESHOLDS: Thresholds = { greyMin: 120, readyMin: 30, warnMin: 10, alertMin: 3 };
+const MIN = 60_000;
+
+export const DEFAULT_THRESHOLDS: Thresholds = { greyMs: 120 * MIN, readyMs: 30 * MIN, warnMs: 10 * MIN, alertMs: 3 * MIN };
 
 /**
  * The ladder, the same one agents use, so a meeting speaks the panel's
@@ -27,11 +29,11 @@ export type Level = 'idle' | 'grey' | 'ready' | 'warn' | 'alert' | 'now';
 
 export function meetingLevel(m: Pick<Meeting, 'startsAt'>, now: number, t: Thresholds): Level {
   if (m.startsAt <= now) return 'now';
-  const left = (m.startsAt - now) / 60_000;
-  if (left <= t.alertMin) return 'alert';
-  if (left <= t.warnMin) return 'warn';
-  if (left <= t.readyMin) return 'ready';
-  if (left <= t.greyMin) return 'grey';
+  const left = m.startsAt - now;
+  if (left <= t.alertMs) return 'alert';
+  if (left <= t.warnMs) return 'warn';
+  if (left <= t.readyMs) return 'ready';
+  if (left <= t.greyMs) return 'grey';
   return 'idle';
 }
 
@@ -50,9 +52,13 @@ export function levelColor(level: Level, c: ThemeColors): string {
   }
 }
 
-/** The meeting under way (the earliest one, if they overlap) and those still to start, in order. */
-export function agendaNow<M extends Pick<Meeting, 'startsAt' | 'endsAt'>>(items: readonly M[], now: number): { current: M | null; next: M[] } {
-  const live = items.filter((m) => m.endsAt > now).sort((a, b) => a.startsAt - b.startsAt);
+/**
+ * The meeting under way (the earliest one, if they overlap) and those still
+ * to start, in order. All-day events are neither: a holiday doesn't start
+ * at midnight nor keep the tile all day.
+ */
+export function agendaNow<M extends Pick<Meeting, 'startsAt' | 'endsAt' | 'allDay'>>(items: readonly M[], now: number): { current: M | null; next: M[] } {
+  const live = items.filter((m) => !m.allDay && m.endsAt > now).sort((a, b) => a.startsAt - b.startsAt);
   return { current: live.find((m) => m.startsAt <= now) ?? null, next: live.filter((m) => m.startsAt > now) };
 }
 
@@ -61,28 +67,28 @@ export function agendaNow<M extends Pick<Meeting, 'startsAt' | 'endsAt'>>(items:
  * following one is about to start (back-to-back meetings): then knowing
  * where to go next matters more than how long the current one lasts.
  */
-export function pickNext<M extends Pick<Meeting, 'startsAt' | 'endsAt'>>(items: readonly M[], now: number, t: Pick<Thresholds, 'warnMin'>): M | null {
+export function pickNext<M extends Pick<Meeting, 'startsAt' | 'endsAt' | 'allDay'>>(items: readonly M[], now: number, t: Pick<Thresholds, 'warnMs'>): M | null {
   const { current, next } = agendaNow(items, now);
   const upcoming = next[0] ?? null;
   if (!current) return upcoming;
-  return upcoming && upcoming.startsAt - now <= t.warnMin * 60_000 ? upcoming : current;
+  return upcoming && upcoming.startsAt - now <= t.warnMs ? upcoming : current;
 }
 
-/** "12 min", "1 h 5 min", "2 h". Rounded up: "in 0 min" would be a lie until it starts. */
-export function countdown(ms: number): string {
-  const min = Math.max(0, Math.ceil(ms / 60_000));
-  if (min < 60) return `${min} min`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return m ? `${h} h ${m} min` : `${h} h`;
+/** What a widget lists: the calendars it was asked for, and without tentative meetings if so. */
+export interface Selection {
+  /** Patterns for `matchFilter` against the calendars' names; empty = all. */
+  calendars?: readonly string[];
+  hideTentative?: boolean;
 }
 
-const pad2 = (n: number) => String(n).padStart(2, '0');
-
-/** 24-hour "09:45", the same in every language. */
-export function hhmm(ms: number): string {
-  const d = new Date(ms);
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+/**
+ * The meetings of the calendars the widget shows. A meeting found in
+ * several calendars passes if any of them does (and none is excluded). One
+ * without a calendar name (a feed that doesn't name itself) is matched as "".
+ */
+export function selectMeetings<M extends Pick<Meeting, 'calendars' | 'tentative'>>(items: readonly M[], o: Selection): M[] {
+  const filtered = o.calendars?.length ? items.filter((m) => matchFilter(m.calendars?.length ? m.calendars : [''], o.calendars)) : [...items];
+  return o.hideTentative ? filtered.filter((m) => !m.tentative) : filtered;
 }
 
 /** Local midnight of the day `ms` falls in, `days` later. */
@@ -110,7 +116,7 @@ export const TEXTS = {
   noMore: { en: 'No more meetings', es: 'No quedan reuniones' },
   noneToday: { en: 'Nothing else today', es: 'Nada más hoy' },
   noneTomorrow: { en: 'No meetings', es: 'Sin reuniones' },
-  more: { en: 'more', es: 'más' },
+  allDay: { en: 'all day', es: 'todo el día' },
   noCalendar: { en: 'No calendar yet', es: 'Aún sin calendario' },
   noCalendarHelp: { en: 'Add its ICS address in Settings → Data sources', es: 'Pon su dirección ICS en Ajustes → Fuentes de datos' },
 } satisfies Record<string, Localized>;

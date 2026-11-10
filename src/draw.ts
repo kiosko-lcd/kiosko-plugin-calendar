@@ -2,15 +2,16 @@
  * Painting the two calendar cards. Everything is sized from the box it gets,
  * so the same code serves a 320×240 corner and a 1920×462 strip.
  */
-import type { Box, Graphics, Localized, RenderContext, Theme } from '@kiosko/sdk';
+import { drawMore, listLayout, type Box, type Formatters, type Graphics, type Localized, type RenderContext, type Theme } from '@kiosko/sdk';
 import type { Meeting } from './ics.ts';
-import { agendaNow, countdown, dayStart, daysFrom, displayTitle, hhmm, levelColor, meetingLevel, TEXTS, type Thresholds } from './meeting.ts';
+import { agendaNow, dayStart, daysFrom, displayTitle, levelColor, meetingLevel, TEXTS, type Thresholds } from './meeting.ts';
 
 export interface Painter {
   g: Graphics;
   kit: RenderContext<unknown, unknown>['kit'];
   theme: Theme;
   t: (text: Localized) => string;
+  fmt: Formatters;
   locale: string;
   now: number;
 }
@@ -82,8 +83,10 @@ export function drawMessage(p: Painter, box: Box, text: string, sub?: string): v
  * before the start the whole card turns into a solid alert field, like the
  * old panel did, and once under way it says "now" and how long is left.
  */
-export function drawNext(p: Painter, box: Box, m: Meeting, o: Thresholds & { showTitle: boolean }): void {
-  const { g, kit, theme, now, t: tr } = p;
+export function drawNext(p: Painter, box: Box, m: Meeting, o: Thresholds & { showTitle: boolean; showAttendees: boolean }): void {
+  const { g, kit, theme, now, t: tr, fmt } = p;
+  const hhmm = (ms: number) => fmt.time(ms);
+  const countdown = (ms: number) => fmt.duration(ms, { round: 'up' });
   const c = theme.colors;
   const f = theme.fonts;
   const level = meetingLevel(m, now, o);
@@ -124,7 +127,7 @@ export function drawNext(p: Painter, box: Box, m: Meeting, o: Thresholds & { sho
     (m.tentative ? ` · ${tr(TEXTS.tentative)}` : '');
   const range = `${hhmm(m.startsAt)}–${hhmm(m.endsAt)}`;
   const title = displayTitle(m, tr, o.showTitle);
-  const who = o.showTitle && !m.private && m.attendees?.length ? m.attendees.join(', ') : '';
+  const who = o.showTitle && o.showAttendees && !m.private && m.attendees?.length ? m.attendees.join(', ') : '';
   const big = started ? tr(TEXTS.nowBig) : days <= 0 ? countdown(m.startsAt - now) : hhmm(m.startsAt);
   const sub = started ? `${tr(TEXTS.endsIn)} ${countdown(m.endsAt - now)}` : '';
 
@@ -200,128 +203,167 @@ export function drawNext(p: Painter, box: Box, m: Meeting, o: Thresholds & { sho
   textBlock(x, w, y + L * 1.5, bigBase - B * 0.74 - Math.max(4, B * 0.12), h * 0.17, meta);
 }
 
-interface Section {
-  title: string;
+/** One day of the agenda: its all-day events first, then its meetings in order. */
+export interface AgendaDay {
+  /** 0 today, 1 tomorrow… */
+  offset: number;
   items: Meeting[];
-  empty: string;
 }
 
 /**
- * Today's meetings still to come (the one under way highlighted, the next
- * one with its countdown) and tomorrow's, like the old agenda card. Side by
- * side on a wide strip, one under the other otherwise.
+ * The days the agenda shows: today's meetings not yet over (one that began
+ * yesterday and still runs included), then each next day's by start, and
+ * every all-day event on each day it covers.
  */
-export function drawAgenda(p: Painter, box: Box, meetings: readonly Meeting[], o: { tomorrow: boolean } & Pick<Thresholds, 'warnMin' | 'alertMin'>): void {
-  const { g, kit, theme, now, t: tr } = p;
+export function agendaDays(meetings: readonly Meeting[], now: number, days: number): AgendaDay[] {
+  const n = Math.max(1, Math.round(days));
+  const out: AgendaDay[] = [];
+  for (let offset = 0; offset < n; offset++) {
+    const from = dayStart(now, offset);
+    const to = dayStart(now, offset + 1);
+    const whole = meetings.filter((m) => m.allDay && m.startsAt < to && m.endsAt > Math.max(from, now));
+    const timed = meetings.filter((m) => !m.allDay && m.endsAt > now && m.startsAt < to && (offset === 0 || m.startsAt >= from));
+    out.push({ offset, items: [...whole.sort((a, b) => a.startsAt - b.startsAt), ...timed.sort((a, b) => a.startsAt - b.startsAt)] });
+  }
+  return out;
+}
+
+type Line = { kind: 'head'; day: AgendaDay } | { kind: 'item'; m: Meeting } | { kind: 'none'; day: AgendaDay };
+
+/** A day's lines: its title, then its meetings, or one line saying there are none. */
+function linesOf(days: readonly AgendaDay[]): Line[] {
+  return days.flatMap((day): Line[] => [{ kind: 'head', day }, ...(day.items.length ? day.items.map((m): Line => ({ kind: 'item', m })) : [{ kind: 'none', day } as Line])]);
+}
+
+export interface AgendaOptions extends Pick<Thresholds, 'warnMs' | 'alertMs'> {
+  days: number;
+  showTitle: boolean;
+  rows: number;
+}
+
+/**
+ * The meetings left today (the one under way highlighted, the next one with
+ * its countdown) and those of the next days, each day under its title. Days
+ * side by side, in columns, on a wide strip; one under the other otherwise.
+ * Rows follow the shared list options (a day title takes a row); what
+ * doesn't fit is counted in "+N more" at the bottom.
+ */
+export function drawAgenda(p: Painter, box: Box, meetings: readonly Meeting[], o: AgendaOptions): void {
+  const { g, kit, theme, now, t: tr, fmt } = p;
   const c = theme.colors;
   const f = theme.fonts;
-  const t1 = dayStart(now, 1);
-  const t2 = dayStart(now, 2);
-  const live = meetings.filter((m) => m.endsAt > now).sort((a, b) => a.startsAt - b.startsAt);
-  const today = live.filter((m) => m.startsAt < t1);
-  const tomorrow = o.tomorrow ? live.filter((m) => m.startsAt >= t1 && m.startsAt < t2) : [];
-  if (!today.length && !tomorrow.length) return drawMessage(p, box, tr(TEXTS.noMore));
-  const first = agendaNow(today, now).next[0];
+  const days = agendaDays(meetings, now, o.days);
+  const first = agendaNow(days[0]?.items ?? [], now).next[0];
+
+  // Columns: one day each on a wide strip (at least 240 px per column), several days per column when they don't fit.
+  const wide = days.length >= 2 && box.w >= box.h * 2.2 && box.w >= 460;
+  const maxCols = wide ? Math.max(2, Math.floor(box.w / 240)) : 1;
+  const perCol = Math.ceil(days.length / Math.min(maxCols, days.length));
+  const columns: AgendaDay[][] = [];
+  for (let i = 0; i < days.length; i += perCol) columns.push(days.slice(i, i + perCol));
+  const colGap = columns.length > 1 ? Math.round(clamp(box.w * 0.03, 10, 32)) : 0;
+  const colW = (box.w - colGap * (columns.length - 1)) / columns.length;
+  const lines = columns.map(linesOf);
+  // Every column with the same rows, so they line up.
+  const longest = Math.max(...lines.map((l) => l.length));
+  const spec = { sizes: { 'one-line': { min: 17, max: clamp(colW / 10, 17, 45) } }, minRows: Math.max(columns.length > 1 ? 4 : 5, longest) };
 
   const dayTitle = (offset: number) => {
     const ms = dayStart(now, offset);
-    return `${tr(offset === 0 ? TEXTS.today : TEXTS.tomorrow)} · ${weekday(ms, p.locale)} ${new Date(ms).getDate()}`;
+    const date = `${weekday(ms, p.locale)} ${new Date(ms).getDate()}`;
+    return offset === 0 ? `${tr(TEXTS.today)} · ${date}` : offset === 1 ? `${tr(TEXTS.tomorrow)} · ${date}` : date;
   };
-  const sections: Section[] = [{ title: dayTitle(0), items: today, empty: tr(TEXTS.noneToday) }];
-  if (o.tomorrow) sections.push({ title: dayTitle(1), items: tomorrow, empty: tr(TEXTS.noneTomorrow) });
 
-  const twoCols = sections.length === 2 && box.w >= box.h * 2.2 && box.w >= 460;
-  const colGap = Math.round(clamp(box.w * 0.03, 10, 32));
-  const colW = twoCols ? (box.w - colGap) / 2 : box.w;
-  const R = Math.round(clamp(Math.min(box.h / (twoCols ? 6 : 7.5), colW / 15), 11, 30));
-  const rowH = Math.round(R * 1.5);
-  const headH = Math.round(R * 1.4);
+  columns.forEach((_, ci) => {
+    const area: Box = { x: box.x + ci * (colW + colGap), y: box.y, w: colW, h: box.h };
+    const list = lines[ci]!;
+    const plan = listLayout(area, list.length, o, spec);
+    const rowH = plan.rowH;
+    // Letters by the row, but no bigger than the time, title and countdown still fit across the column.
+    const R = Math.max(10, Math.min(rowH / 1.5, colW / 18));
+    const headO = { size: Math.round(R * 0.8), family: f.sansBold, color: c.inkDim, smallCaps: true, tracking: Math.max(1, R * 0.06) };
+    const timeO = { size: Math.round(R * 0.9), family: f.mono, color: c.inkDim };
+    const titleO = { size: Math.round(R), family: f.sans, color: c.ink };
+    const sideO = { size: Math.round(R * 0.85), family: f.sans, color: c.inkDim, align: 'right' as const };
+    const inset = Math.max(4, Math.round(R * 0.4));
+    const timeColW = kit.measureTracked(g, fmt.time(dayStart(now) + 12 * 3_600_000 + 59 * 60_000), timeO);
+    const baseOf = (top: number) => top + rowH / 2 + R * 0.36;
 
-  const headO = { size: Math.round(R * 0.8), family: f.sansBold, color: c.inkDim, smallCaps: true, tracking: Math.max(1, R * 0.06) };
-  const timeO = { size: Math.round(R * 0.9), family: f.mono, color: c.inkDim };
-  const titleO = { size: R, family: f.sans, color: c.ink };
-  const sideO = { size: Math.round(R * 0.85), family: f.sans, color: c.inkDim, align: 'right' as const };
-  const inset = Math.max(4, Math.round(R * 0.4));
+    const row = (m: Meeting, x: number, top: number, w: number) => {
+      const live = !m.allDay && m.startsAt <= now;
+      const base = baseOf(top);
+      if (live) {
+        roundRect(g, x, top + 1, w, rowH - 2, Math.min(theme.radius, rowH * 0.3));
+        g.fillStyle = c.surfaceEdge;
+        g.fill();
+        g.fillStyle = c.info;
+        g.fillRect(x, top + 1, Math.max(3, Math.round(R * 0.15)), rowH - 2);
+      }
+      const tx = x + inset;
+      if (m.allDay) {
+        // No time: a dot where it would go.
+        g.fillStyle = c.info;
+        g.beginPath();
+        g.arc(tx + timeColW / 2, base - R * 0.3, Math.max(2, R * 0.18), 0, Math.PI * 2);
+        g.fill();
+      } else {
+        kit.drawTracked(g, fmt.time(m.startsAt), tx, base, { ...timeO, color: live ? c.info : c.inkDim });
+      }
+      // The one under way says when it ends; the next one, when it starts;
+      // an all-day event, that it is. A short form when the long one would
+      // squeeze the title: the end time for the one under way ("18 min"
+      // alone would read as a start).
+      let full = '';
+      let short = '';
+      let sideColor = c.inkDim;
+      if (m.allDay) {
+        full = tr(TEXTS.allDay);
+      } else if (live) {
+        short = `–${fmt.time(m.endsAt)}`;
+        full = `${tr(TEXTS.endsIn)} ${fmt.duration(m.endsAt - now, { round: 'up' })}`;
+        sideColor = c.info;
+      } else if (m === first) {
+        const left = m.startsAt - now;
+        short = fmt.duration(left, { round: 'up' });
+        full = `${tr(TEXTS.in)} ${short}`;
+        sideColor = left <= o.alertMs ? c.alert : left <= o.warnMs ? c.warn : c.inkDim;
+      }
+      const right = x + w - inset;
+      const titleX = tx + timeColW + R * 0.6;
+      const text = displayTitle(m, tr, o.showTitle) + (m.tentative ? ' (?)' : '');
+      const to = { ...titleO, color: m.tentative ? c.inkDim : c.ink };
+      const textW = kit.measureTracked(g, text, to);
+      const widthOf = (str: string) => (str ? kit.measureTracked(g, str, sideO) : 0);
+      let side = full;
+      if (side && (widthOf(full) > w * 0.4 || titleX + textW + R * 0.6 + widthOf(full) > right)) side = short;
+      if (side && widthOf(side) > w * 0.4) side = '';
+      const sideW = widthOf(side);
+      if (side) kit.drawTracked(g, side, right, base, { ...sideO, color: sideColor });
+      const titleW = right - titleX - (side ? sideW + R * 0.6 : 0);
+      if (titleW > R) kit.drawTracked(g, kit.truncate(g, text, titleW, to), titleX, base, to);
+    };
 
-  const row = (m: Meeting, x: number, top: number, w: number) => {
-    const live = m.startsAt <= now;
-    const base = top + rowH / 2 + R * 0.36;
-    if (live) {
-      roundRect(g, x, top + 1, w, rowH - 2, Math.min(theme.radius, rowH * 0.3));
+    // A day title can't be the last line drawn: its meetings would all be in "+N more".
+    // With room for a single line, that line is the first meeting, without its title.
+    let drawn = list.slice(0, plan.shown);
+    if (plan.shown < list.length && drawn[drawn.length - 1]?.kind === 'head') drawn = drawn.length > 1 ? drawn.slice(0, -1) : list.slice(1, 2);
+    const shown = drawn.length;
+    drawn.forEach((line, i) => {
+      const top = area.y + i * rowH;
+      if (line.kind === 'head') {
+        kit.drawTracked(g, kit.truncate(g, dayTitle(line.day.offset), area.w, headO), area.x, top + rowH * 0.5 + headO.size * 0.45, headO);
+      } else if (line.kind === 'none') {
+        const eo = { ...titleO, size: Math.round(R * 0.9), color: c.inkFaint };
+        kit.drawTracked(g, kit.truncate(g, tr(line.day.offset === 0 ? TEXTS.noneToday : TEXTS.noneTomorrow), area.w - inset, eo), area.x + inset, baseOf(top) - R * 0.02, eo);
+      } else {
+        row(line.m, area.x, top, area.w);
+      }
+    });
+    const hidden = list.filter((l) => l.kind === 'item' && !drawn.includes(l)).length;
+    if (hidden && plan.more) drawMore(g, p, { hidden, more: { ...plan.more, y: area.y + shown * rowH } }, { indent: inset });
+    if (ci > 0) {
       g.fillStyle = c.surfaceEdge;
-      g.fill();
-      g.fillStyle = c.info;
-      g.fillRect(x, top + 1, Math.max(3, Math.round(R * 0.15)), rowH - 2);
+      g.fillRect(Math.round(area.x - colGap / 2), box.y + R * 0.2, 1, box.h - R * 0.4);
     }
-    const tx = x + inset;
-    const timeW = kit.drawTracked(g, hhmm(m.startsAt), tx, base, { ...timeO, color: live ? c.info : c.inkDim });
-    // The one under way says when it ends; the next one, when it starts.
-    // A short form when the long one would squeeze the title: the end time
-    // for the one under way ("18 min" alone would read as a start).
-    let full = '';
-    let short = '';
-    let sideColor = c.inkDim;
-    if (live) {
-      short = `–${hhmm(m.endsAt)}`;
-      full = `${tr(TEXTS.endsIn)} ${countdown(m.endsAt - now)}`;
-      sideColor = c.info;
-    } else if (m === first) {
-      const left = m.startsAt - now;
-      short = countdown(left);
-      full = `${tr(TEXTS.in)} ${short}`;
-      sideColor = left <= o.alertMin * 60_000 ? c.alert : left <= o.warnMin * 60_000 ? c.warn : c.inkDim;
-    }
-    const right = x + w - inset;
-    const titleX = tx + timeW + R * 0.6;
-    const text = displayTitle(m, tr) + (m.tentative ? ' (?)' : '');
-    const to = { ...titleO, color: m.tentative ? c.inkDim : c.ink };
-    const textW = kit.measureTracked(g, text, to);
-    const widthOf = (s: string) => (s ? kit.measureTracked(g, s, sideO) : 0);
-    let side = full;
-    if (side && (widthOf(full) > w * 0.4 || titleX + textW + R * 0.6 + widthOf(full) > right)) side = short;
-    if (side && widthOf(side) > w * 0.4) side = '';
-    const sideW = widthOf(side);
-    if (side) kit.drawTracked(g, side, right, base, { ...sideO, color: sideColor });
-    const titleW = right - titleX - (side ? sideW + R * 0.6 : 0);
-    if (titleW > R) kit.drawTracked(g, kit.truncate(g, text, titleW, to), titleX, base, to);
-  };
-
-  /** Paints a day in `area` and returns the height it used. */
-  const section = (s: Section, area: Box): number => {
-    kit.drawTracked(g, kit.truncate(g, s.title, area.w, headO), area.x, area.y + headO.size, headO);
-    let top = area.y + headH;
-    if (!s.items.length) {
-      const eo = { ...titleO, size: Math.round(R * 0.9), color: c.inkFaint };
-      kit.drawTracked(g, kit.truncate(g, s.empty, area.w - inset, eo), area.x + inset, top + rowH / 2 + R * 0.34, eo);
-      return headH + rowH;
-    }
-    const fit = Math.max(1, Math.floor((area.h - headH) / rowH));
-    // With room for a single row, a meeting says more than "+3 more".
-    const shown = s.items.length <= fit ? s.items : s.items.slice(0, Math.max(1, fit - 1));
-    for (const m of shown) {
-      row(m, area.x, top, area.w);
-      top += rowH;
-    }
-    if (shown.length < s.items.length && fit >= 2) {
-      const mo = { ...titleO, size: Math.round(R * 0.85), color: c.inkDim };
-      kit.drawTracked(g, `+${s.items.length - shown.length} ${tr(TEXTS.more)}`, area.x + inset, top + rowH / 2 + R * 0.34, mo);
-      top += rowH;
-    }
-    return top - area.y;
-  };
-
-  if (twoCols) {
-    sections.forEach((s, i) => section(s, { x: box.x + i * (colW + colGap), y: box.y, w: colW, h: box.h }));
-    g.fillStyle = c.surfaceEdge;
-    g.fillRect(Math.round(box.x + colW + colGap / 2), box.y + R * 0.2, 1, box.h - R * 0.4);
-    return;
-  }
-  let used = section(sections[0]!, box);
-  // Tomorrow only gets what today leaves, and only if a row of it fits.
-  for (const s of sections.slice(1)) {
-    const gap = Math.round(R * 0.5);
-    const rest = box.h - used - gap;
-    if (rest < headH + rowH) break;
-    used += gap + section(s, { x: box.x, y: box.y + used + gap, w: box.w, h: rest });
-  }
+  });
 }

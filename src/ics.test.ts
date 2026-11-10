@@ -13,8 +13,8 @@ const skip = ICAL ? false : 'optional dependency ical.js not installed';
 const NOW = Date.parse('2026-08-18T09:00:00+02:00');
 const END_OF_DAY = Date.parse('2026-08-18T23:59:59.999+02:00');
 
-const parse = (ics: string, o: { from?: number; until?: number; ignore?: string[] } = {}) =>
-  parseMeetings(ICAL!, ics, { ignore: o.ignore ?? DEFAULT_IGNORE }, o.from ?? NOW, o.until ?? END_OF_DAY);
+const parse = (ics: string, o: { from?: number; until?: number; ignore?: string[]; allDay?: boolean } = {}) =>
+  parseMeetings(ICAL!, ics, { ignore: o.ignore ?? DEFAULT_IGNORE, allDay: o.allDay ?? false }, o.from ?? NOW, o.until ?? END_OF_DAY);
 
 /** A minimal ICS shaped like Outlook's: Windows TZID plus its VTIMEZONE. */
 function ics(events: string): string {
@@ -120,6 +120,34 @@ test('calendar: leaves out what does not claim the user', { skip }, () => {
   assert.deepEqual(parse(cal).map((m) => m.title), ['Real meeting']);
 });
 
+test('calendar: all-day events, when asked for, whatever their busy status', { skip }, () => {
+  const day = (start: string, end: string) => ({ 'DTSTART;VALUE=DATE': start, 'DTEND;VALUE=DATE': end });
+  const cal = ics([
+    vevent({ ...day('20260818', '20260819'), SUMMARY: 'Holiday', TRANSP: 'TRANSPARENT' }),
+    vevent({ ...day('20260817', '20260821'), SUMMARY: 'Trip', 'X-MICROSOFT-CDO-BUSYSTATUS': 'OOF' }),
+    vevent({ ...day('20260818', '20260819'), SUMMARY: 'Called off', STATUS: 'CANCELLED' }),
+    vevent({ 'DTSTART;VALUE=DATE': '20260818', SUMMARY: 'No end' }),
+    vevent({ ...day('20260816', '20260818'), SUMMARY: 'Over yesterday' }),
+    vevent({ ...span('20260818T120000', '20260818T130000'), SUMMARY: 'Meeting' }),
+  ].join('\r\n'));
+  assert.deepEqual(parse(cal).map((m) => m.title), ['Meeting'], 'left out by default');
+  const found = parse(cal, { allDay: true });
+  assert.deepEqual(found.map((m) => m.title).sort(), ['Holiday', 'Meeting', 'No end', 'Trip']);
+  const holiday = found.find((m) => m.title === 'Holiday')!;
+  assert.equal(holiday.allDay, true);
+  assert.equal(holiday.startsAt, new Date(2026, 7, 18).getTime(), 'local midnight');
+  assert.equal(holiday.endsAt, new Date(2026, 7, 19).getTime());
+  const noEnd = found.find((m) => m.title === 'No end')!;
+  assert.equal(noEnd.endsAt - noEnd.startsAt, 86_400_000, 'without an end it lasts its day');
+  assert.equal(found.find((m) => m.title === 'Meeting')!.allDay, undefined);
+});
+
+test('calendar: meetings carry the name the calendar gives itself', { skip }, () => {
+  const named = ics(vevent({ ...span('20260818T103000', '20260818T110000'), SUMMARY: 'Committee' })).replace('VERSION:2.0', 'VERSION:2.0\r\nX-WR-CALNAME:Work');
+  assert.deepEqual(parse(named)[0]!.calendars, ['Work']);
+  assert.equal(parse(ics(vevent({ ...span('20260818T103000', '20260818T110000'), SUMMARY: 'Committee' })))[0]!.calendars, undefined);
+});
+
 test('calendar: a meeting under way still counts; a finished one does not', { skip }, () => {
   const cal = ics([vevent({ ...span('20260818T085000', '20260818T093000'), SUMMARY: 'Under way' }), vevent({ ...span('20260818T080000', '20260818T083000'), SUMMARY: 'Finished' })].join('\r\n'));
   assert.deepEqual(parse(cal).map((m) => m.title), ['Under way']);
@@ -191,6 +219,11 @@ test('mergeMeetings: ordered by time, duplicates across calendars dropped', () =
   const merged = mergeMeetings([meeting('Retro', 3000), meeting('Daily', 1000), meeting('Daily', 1000), meeting('One to one', 2000)]);
   assert.deepEqual(merged.map((x) => x.title), ['Daily', 'One to one', 'Retro']);
   assert.equal(mergeMeetings([meeting('Daily', 1000), meeting(' daily ', 1000)]).length, 1, 'same title modulo case and spaces');
+});
+
+test('mergeMeetings: the copy kept takes the calendars of the others', () => {
+  const [one] = mergeMeetings([{ ...meeting('Daily', 1000), calendars: ['Work'] }, { ...meeting('Daily', 1000), calendars: ['Team', 'Work'] }]);
+  assert.deepEqual(one!.calendars, ['Work', 'Team']);
 });
 
 test('mergeMeetings: two meetings at the same time with different titles are two', () => {

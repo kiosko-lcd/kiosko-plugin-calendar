@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { localize, THEMES } from '@kiosko/sdk';
-import { agendaNow, countdown, DEFAULT_THRESHOLDS, displayTitle, levelColor, meetingLevel, pickNext } from './meeting.ts';
+import { agendaNow, DEFAULT_THRESHOLDS, displayTitle, levelColor, meetingLevel, pickNext, selectMeetings } from './meeting.ts';
 
 const MIN = 60_000;
 const NOW = Date.parse('2026-11-04T13:00:00');
@@ -38,19 +38,34 @@ test('agendaNow: the meeting under way and the ones still to start', () => {
 
 test('pickNext: back to back, the next one wins once it is close', () => {
   const now = [m('Review', -20, 30), m('One to one', 10)];
-  assert.equal(pickNext(now, NOW, { warnMin: 10 })?.title, 'One to one', 'at 10 minutes, where to go next matters more');
-  assert.equal(pickNext(now, NOW, { warnMin: 5 })?.title, 'Review');
-  assert.equal(pickNext([m('Later', 45)], NOW, { warnMin: 10 })?.title, 'Later');
-  assert.equal(pickNext([m('Done', -60)], NOW, { warnMin: 10 }), null);
+  assert.equal(pickNext(now, NOW, { warnMs: 10 * MIN })?.title, 'One to one', 'at 10 minutes, where to go next matters more');
+  assert.equal(pickNext(now, NOW, { warnMs: 5 * MIN })?.title, 'Review');
+  assert.equal(pickNext([m('Later', 45)], NOW, { warnMs: 10 * MIN })?.title, 'Later');
+  assert.equal(pickNext([m('Done', -60)], NOW, { warnMs: 10 * MIN }), null);
 });
 
-test('countdown: "12 min", "1 h 5 min", rounded up', () => {
-  assert.equal(countdown(12 * MIN), '12 min');
-  assert.equal(countdown(11 * MIN + 1), '12 min', 'never says less than what is left');
-  assert.equal(countdown(30_000), '1 min');
-  assert.equal(countdown(65 * MIN), '1 h 5 min');
-  assert.equal(countdown(120 * MIN), '2 h');
-  assert.equal(countdown(-5 * MIN), '0 min');
+test('agendaNow and pickNext: an all-day event is never under way nor next', () => {
+  const holiday = { title: 'Holiday', startsAt: NOW - 13 * 60 * MIN, endsAt: NOW + 11 * 60 * MIN, allDay: true };
+  const { current, next } = agendaNow([holiday, m('Soon', 15)], NOW);
+  assert.equal(current, null);
+  assert.deepEqual(next.map((x) => x.title), ['Soon']);
+  assert.equal(pickNext([holiday], NOW, { warnMs: 10 * MIN }), null);
+});
+
+test('selectMeetings: calendars by name (any of a merged meeting), tentative ones out if asked', () => {
+  const list = [
+    { title: 'Standup', calendars: ['Work'] },
+    { title: 'Dentist', calendars: ['Personal'] },
+    { title: 'Shared', calendars: ['Work', 'Family'] },
+    { title: 'Unnamed' },
+    { title: 'Maybe', calendars: ['Work'], tentative: true },
+  ];
+  const titles = (o: Parameters<typeof selectMeetings>[1]) => selectMeetings(list, o).map((x) => x.title);
+  assert.deepEqual(titles({}), ['Standup', 'Dentist', 'Shared', 'Unnamed', 'Maybe']);
+  assert.deepEqual(titles({ calendars: ['work'] }), ['Standup', 'Shared', 'Maybe'], 'case does not matter');
+  assert.deepEqual(titles({ calendars: ['!Work'] }), ['Dentist', 'Unnamed']);
+  assert.deepEqual(titles({ calendars: ['Family', 'Personal'] }), ['Dentist', 'Shared']);
+  assert.deepEqual(titles({ hideTentative: true }), ['Standup', 'Dentist', 'Shared', 'Unnamed']);
 });
 
 test('displayTitle: private meetings never show theirs', () => {

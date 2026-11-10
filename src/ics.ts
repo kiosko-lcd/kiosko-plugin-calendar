@@ -30,6 +30,13 @@ export interface Meeting {
   private?: boolean;
   /** Invited people who didn't decline, by name (or mailbox). Outlook's published feeds don't carry them. */
   attendees?: string[];
+  /**
+   * A whole-day event (a holiday, a trip, an on-call day): from local
+   * midnight to the midnight after its last day. Only with `includeAllDay`.
+   */
+  allDay?: boolean;
+  /** Names of the calendars it comes from (their `X-WR-CALNAME`), for the widgets' calendar filter. */
+  calendars?: string[];
 }
 
 /** Outlook's focus-time blocks are marked busy; without these they would light the panel mid-morning. */
@@ -148,17 +155,34 @@ function walkStart(ev: any, before: number): any {
   return moved;
 }
 
+export interface ParseOptions {
+  /** Titles containing any of these (case and accents aside) are left out. */
+  ignore: readonly string[];
+  /** Keep whole-day events too (holidays, trips, on-call days), whatever their busy status. */
+  allDay?: boolean;
+  /** Tests only: walk every series from its first occurrence. */
+  walkFromStart?: boolean;
+}
+
+/** The name a calendar gives itself (`X-WR-CALNAME`), or "" when it gives none. */
+export function calendarName(comp: any): string {
+  return String(comp.getFirstPropertyValue?.('x-wr-calname') ?? '').trim();
+}
+
 /**
- * Meetings that overlap `[from, until]`, in order. Left out: all-day events,
- * those marked free, out of office or cancelled, and those whose title
- * matches one of `ignore` (case and accents aside). A meeting already under
- * way when `from` arrives still counts: it's the one claiming the user.
+ * Meetings that overlap `[from, until]`, in order. Left out: those marked
+ * free, out of office or cancelled, those whose title matches one of
+ * `ignore` (case and accents aside), and all-day events unless `allDay`
+ * (then only cancelled ones are dropped: a holiday is usually "free" and a
+ * trip "out of office", which is what one wants to see). A meeting already
+ * under way when `from` arrives still counts: it's the one claiming the user.
  *
  * Throws when `ics` isn't iCalendar at all; a single broken event is skipped.
  */
-export function parseMeetings(ICAL: IcalModule, ics: string, o: { ignore: readonly string[]; /** Tests only: walk every series from its first occurrence. */ walkFromStart?: boolean }, from: number, until: number): Meeting[] {
+export function parseMeetings(ICAL: IcalModule, ics: string, o: ParseOptions, from: number, until: number): Meeting[] {
   const comp = new ICAL.Component(ICAL.parse(ics));
   registerTimezones(ICAL, comp);
+  const calendar = calendarName(comp);
 
   // A moved or edited occurrence of a series travels as its own VEVENT with
   // the same UID and a RECURRENCE-ID. Related to its series, the series'
@@ -192,13 +216,16 @@ export function parseMeetings(ICAL: IcalModule, ics: string, o: { ignore: readon
 
   const out: Meeting[] = [];
   const add = (item: any, start: any, end: any) => {
-    if (!start || start.isDate) return; // all day
+    if (!start) return;
+    const allDay = !!start.isDate;
+    if (allDay && !o.allDay) return;
     const sub = item.component;
-    if (!claims(sub)) return;
+    if (allDay ? prop(sub, 'status') === 'CANCELLED' : !claims(sub)) return;
     const title = String(item.summary ?? '').trim();
     if (ignored(title, o.ignore)) return;
+    // A date without a time is local midnight; an all-day event without an end lasts that day.
     const startsAt = start.toJSDate().getTime();
-    const endsAt = end ? end.toJSDate().getTime() : startsAt;
+    const endsAt = end ? end.toJSDate().getTime() : allDay ? startsAt + DAY_MS : startsAt;
     if (startsAt > until || endsAt <= from) return;
     const attendees = attendeesOf(sub);
     const busy = prop(sub, 'x-microsoft-cdo-busystatus');
@@ -210,6 +237,8 @@ export function parseMeetings(ICAL: IcalModule, ics: string, o: { ignore: readon
       ...(busy === 'TENTATIVE' || prop(sub, 'status') === 'TENTATIVE' ? { tentative: true } : {}),
       ...(cls === 'PRIVATE' || cls === 'CONFIDENTIAL' ? { private: true } : {}),
       ...(attendees.length ? { attendees } : {}),
+      ...(allDay ? { allDay: true } : {}),
+      ...(calendar ? { calendars: [calendar] } : {}),
     });
   };
 
@@ -247,17 +276,26 @@ export function parseMeetings(ICAL: IcalModule, ics: string, o: { ignore: readon
  *
  * The same meeting shows up in two calendars as soon as you share one, so
  * duplicates by start time and title are dropped. The first copy is kept,
- * which by the merge order is the one of the feed listed first.
+ * which by the merge order is the one of the feed listed first, and it
+ * takes the calendar names of the others (so a calendar filter still finds
+ * it in either).
  */
 export function mergeMeetings(meetings: readonly Meeting[]): Meeting[] {
-  const seen = new Set<string>();
-  return meetings
-    .slice()
-    .sort((a, b) => a.startsAt - b.startsAt)
-    .filter((m) => {
-      const key = `${m.startsAt}|${m.title.trim().toLowerCase()}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+  const kept = new Map<string, Meeting>();
+  const out: Meeting[] = [];
+  for (const m of meetings.slice().sort((a, b) => a.startsAt - b.startsAt)) {
+    const key = `${m.startsAt}|${m.title.trim().toLowerCase()}`;
+    const first = kept.get(key);
+    if (!first) {
+      const copy = m.calendars ? { ...m, calendars: [...m.calendars] } : { ...m };
+      kept.set(key, copy);
+      out.push(copy);
+      continue;
+    }
+    for (const c of m.calendars ?? []) {
+      if (!first.calendars) first.calendars = [c];
+      else if (!first.calendars.includes(c)) first.calendars.push(c);
+    }
+  }
+  return out;
 }
