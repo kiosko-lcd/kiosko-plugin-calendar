@@ -72,7 +72,7 @@ export const events = defineSource({
     const ICAL = await loadIcal();
     if (!ICAL) throw new Error('the optional dependency ical.js is not installed (npm install ical.js)');
     const timeoutMs = Math.max(1000, Math.round((ctx.timeoutMs * 2) / 3));
-    const feeds = await fetchAll(urls, { dir: ctx.dataDir, timeoutMs, signal: ctx.signal, log: ctx.log });
+    const feeds = await fetchAll(urls, { dir: ctx.cacheDir || ctx.dataDir, timeoutMs, signal: ctx.signal, log: ctx.log });
     if (!feeds.length) throw new Error(`${urls.length > 1 ? 'no calendar' : 'the calendar'} could be read, and there is no copy on disk`);
     const from = dayStart(ctx.now);
     const until = dayStart(ctx.now, o.horizonDays + 1) - 1;
@@ -232,7 +232,7 @@ export const agenda = defineWidget({
 export default definePlugin({
   id: 'calendar',
   name: { en: 'Calendar', es: 'Calendario' },
-  version: '0.1.0',
+  version: '0.2.1',
   description: {
     en: 'Meetings from published ICS calendars (Outlook/Teams, Google…): a countdown to the next one and the agenda of the next days.',
     es: 'Reuniones de calendarios ICS publicados (Outlook/Teams, Google…): una cuenta atrás hasta la siguiente y la agenda de los próximos días.',

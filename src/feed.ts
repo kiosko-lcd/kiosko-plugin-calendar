@@ -17,7 +17,7 @@ export class NotAnIcsFeed extends Error {}
 class HttpError extends Error {}
 
 export interface FeedOptions {
-  /** Folder for the local copies (the plugin's `dataDir`). */
+  /** Folder for the local copies (the plugin's `cacheDir`, in RAM). */
   dir: string;
   timeoutMs: number;
   signal?: AbortSignal;
