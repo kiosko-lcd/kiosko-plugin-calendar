@@ -232,7 +232,7 @@ export const agenda = defineWidget({
 export default definePlugin({
   id: 'calendar',
   name: { en: 'Calendar', es: 'Calendario' },
-  version: '0.2.0',
+  version: '0.2.1',
   description: {
     en: 'Meetings from published ICS calendars (Outlook/Teams, Google…): a countdown to the next one and the agenda of the next days.',
     es: 'Reuniones de calendarios ICS publicados (Outlook/Teams, Google…): una cuenta atrás hasta la siguiente y la agenda de los próximos días.',
