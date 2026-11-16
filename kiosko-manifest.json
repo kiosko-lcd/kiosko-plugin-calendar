@@ -1,0 +1,610 @@
+{
+  "manifest": 1,
+  "id": "calendar",
+  "package": "kiosko-plugin-calendar",
+  "name": {
+    "en": "Calendar",
+    "es": "Calendario"
+  },
+  "version": "0.2.1",
+  "description": {
+    "en": "Meetings from published ICS calendars (Outlook/Teams, Google…): a countdown to the next one and the agenda of the next days.",
+    "es": "Reuniones de calendarios ICS publicados (Outlook/Teams, Google…): una cuenta atrás hasta la siguiente y la agenda de los próximos días."
+  },
+  "author": "Kiosko",
+  "license": "MIT",
+  "homepage": "https://github.com/kiosko-lcd/kiosko-plugin-calendar#readme",
+  "repository": "https://github.com/kiosko-lcd/kiosko-plugin-calendar.git",
+  "icon": "calendar",
+  "sdk": "^0.2.0",
+  "platforms": [
+    "linux",
+    "darwin",
+    "win32"
+  ],
+  "languages": [
+    "en",
+    "es"
+  ],
+  "categories": [
+    "time"
+  ],
+  "tags": [
+    "calendar",
+    "calendario",
+    "meeting",
+    "reunión",
+    "outlook",
+    "teams",
+    "ics",
+    "agenda"
+  ],
+  "permissions": {
+    "network": [
+      "user"
+    ]
+  },
+  "riskyOptions": [
+    {
+      "path": "calendar/events: urls",
+      "risk": [
+        "network"
+      ],
+      "secret": true
+    }
+  ],
+  "requires": [],
+  "optional": [],
+  "widgets": [
+    {
+      "type": "calendar/next",
+      "name": {
+        "en": "Next meeting",
+        "es": "Próxima reunión"
+      },
+      "description": {
+        "en": "A big countdown to your next meeting. Its colour climbs the semaphore as it nears, and it takes the tile over when it’s about to start.",
+        "es": "Una cuenta atrás grande hasta tu próxima reunión. Su color sube por el semáforo según se acerca, y se queda la tesela cuando está a punto de empezar."
+      },
+      "icon": "calendar-clock",
+      "category": "time",
+      "tags": [
+        "calendar",
+        "calendario",
+        "meeting",
+        "reunión",
+        "outlook",
+        "teams",
+        "ics"
+      ],
+      "size": {
+        "min": {
+          "w": 160,
+          "h": 90
+        },
+        "preferred": {
+          "w": 400,
+          "h": 220
+        }
+      },
+      "chrome": "card",
+      "sources": [
+        "calendar/events"
+      ],
+      "options": {
+        "default": {
+          "showTitle": true,
+          "showAttendees": true,
+          "greyMs": 7200000,
+          "readyMs": 1800000,
+          "warnMs": 600000,
+          "alertMs": 180000,
+          "hideTentative": false,
+          "calendars": []
+        },
+        "x-ui": {},
+        "type": "object",
+        "properties": {
+          "showTitle": {
+            "title": "Show the title",
+            "description": "Off: only the time and the countdown. Private meetings never show it.",
+            "default": true,
+            "x-ui": {
+              "label": {
+                "en": "Show the title",
+                "es": "Mostrar el título"
+              },
+              "help": {
+                "en": "Off: only the time and the countdown. Private meetings never show it.",
+                "es": "Apagado: sólo la hora y la cuenta atrás. Las privadas nunca lo enseñan."
+              }
+            },
+            "type": "boolean"
+          },
+          "showAttendees": {
+            "title": "Show who attends",
+            "description": "With the title. Outlook’s published calendars don’t carry them.",
+            "default": true,
+            "x-ui": {
+              "label": {
+                "en": "Show who attends",
+                "es": "Mostrar quién asiste"
+              },
+              "help": {
+                "en": "With the title. Outlook’s published calendars don’t carry them.",
+                "es": "Junto al título. Los calendarios publicados de Outlook no los traen."
+              }
+            },
+            "type": "boolean"
+          },
+          "greyMs": {
+            "title": "Awake from (before it starts)",
+            "description": "Further away it is drawn dim and lets the panel sleep.",
+            "default": 7200000,
+            "x-ui": {
+              "label": {
+                "en": "Awake from (before it starts)",
+                "es": "Despierta desde (antes de empezar)"
+              },
+              "help": {
+                "en": "Further away it is drawn dim and lets the panel sleep.",
+                "es": "Más lejos se pinta tenue y deja dormir al panel."
+              },
+              "unit": "ms"
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "readyMs": {
+            "title": "Info colour from (before it starts)",
+            "default": 1800000,
+            "x-ui": {
+              "label": {
+                "en": "Info colour from (before it starts)",
+                "es": "Color informativo desde (antes de empezar)"
+              },
+              "unit": "ms"
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "warnMs": {
+            "title": "Warning colour from (before it starts)",
+            "description": "Also when, back to back, the next meeting replaces the one under way.",
+            "default": 600000,
+            "x-ui": {
+              "label": {
+                "en": "Warning colour from (before it starts)",
+                "es": "Color de aviso desde (antes de empezar)"
+              },
+              "help": {
+                "en": "Also when, back to back, the next meeting replaces the one under way.",
+                "es": "También cuando, con reuniones seguidas, la siguiente sustituye a la que está en curso."
+              },
+              "unit": "ms"
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "alertMs": {
+            "title": "Alert from (before it starts)",
+            "description": "From here until it ends, it takes its tile over.",
+            "default": 180000,
+            "x-ui": {
+              "label": {
+                "en": "Alert from (before it starts)",
+                "es": "Alerta desde (antes de empezar)"
+              },
+              "help": {
+                "en": "From here until it ends, it takes its tile over.",
+                "es": "Desde aquí hasta que acaba, se queda la tesela."
+              },
+              "unit": "ms"
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "hideTentative": {
+            "title": "Skip tentative meetings",
+            "description": "Invitations not accepted yet.",
+            "default": false,
+            "x-ui": {
+              "label": {
+                "en": "Skip tentative meetings",
+                "es": "Saltar las provisionales"
+              },
+              "help": {
+                "en": "Invitations not accepted yet.",
+                "es": "Invitaciones aún sin aceptar."
+              }
+            },
+            "type": "boolean"
+          },
+          "calendars": {
+            "title": "Calendars",
+            "description": "Empty: all. Names as each calendar calls itself (Work, Holidays…), comma-separated; * matches anything, a leading ! leaves out.",
+            "default": [],
+            "x-ui": {
+              "label": {
+                "en": "Calendars",
+                "es": "Calendarios"
+              },
+              "help": {
+                "en": "Empty: all. Names as each calendar calls itself (Work, Holidays…), comma-separated; * matches anything, a leading ! leaves out.",
+                "es": "Vacío: todos. Nombres como se llama cada calendario (Trabajo, Festivos…), separados por comas; * vale por cualquier cosa y un ! delante excluye."
+              },
+              "widget": "filter",
+              "choices": {
+                "source": "calendar/events",
+                "list": "calendars"
+              }
+            },
+            "type": "array",
+            "items": {
+              "default": "",
+              "x-ui": {
+                "placeholder": "name, group/*, !old-*",
+                "choices": {
+                  "source": "calendar/events",
+                  "list": "calendars"
+                }
+              },
+              "type": "string"
+            },
+            "x-filter": true
+          }
+        }
+      },
+      "screenshot": "docs/next.png",
+      "animated": false,
+      "urgent": true
+    },
+    {
+      "type": "calendar/agenda",
+      "name": {
+        "en": "Agenda",
+        "es": "Agenda"
+      },
+      "description": {
+        "en": "The meetings left today and those of the next days: the one under way highlighted, the next one with its countdown.",
+        "es": "Las reuniones que quedan hoy y las de los próximos días: la que está en curso resaltada, la siguiente con su cuenta atrás."
+      },
+      "icon": "calendar-days",
+      "category": "time",
+      "tags": [
+        "calendar",
+        "calendario",
+        "agenda",
+        "meeting",
+        "reunión",
+        "outlook",
+        "teams",
+        "ics"
+      ],
+      "size": {
+        "min": {
+          "w": 220,
+          "h": 120
+        },
+        "preferred": {
+          "w": 600,
+          "h": 440
+        }
+      },
+      "chrome": "card",
+      "sources": [
+        "calendar/events"
+      ],
+      "options": {
+        "default": {
+          "days": 2,
+          "showTitle": true,
+          "rows": 0,
+          "calendars": [],
+          "greyMs": 7200000,
+          "warnMs": 600000,
+          "alertMs": 180000,
+          "holdMs": 600000
+        },
+        "x-ui": {},
+        "type": "object",
+        "properties": {
+          "days": {
+            "title": "Days",
+            "description": "Today included: 1 is only today, 2 today and tomorrow. The source must look as many days ahead, minus one.",
+            "default": 2,
+            "x-ui": {
+              "label": {
+                "en": "Days",
+                "es": "Días"
+              },
+              "help": {
+                "en": "Today included: 1 is only today, 2 today and tomorrow. The source must look as many days ahead, minus one.",
+                "es": "Hoy incluido: 1 es sólo hoy, 2 hoy y mañana. La fuente debe mirar esos días por delante, menos uno."
+              }
+            },
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7
+          },
+          "showTitle": {
+            "title": "Show the titles",
+            "description": "Off: \"Meeting\" instead, for a screen others see. Private meetings never show theirs.",
+            "default": true,
+            "x-ui": {
+              "label": {
+                "en": "Show the titles",
+                "es": "Mostrar los títulos"
+              },
+              "help": {
+                "en": "Off: \"Meeting\" instead, for a screen others see. Private meetings never show theirs.",
+                "es": "Apagado: «Reunión» en su lugar, para una pantalla que ven otros. Las privadas nunca lo enseñan."
+              }
+            },
+            "type": "boolean"
+          },
+          "rows": {
+            "title": "Rows",
+            "description": "0 = as many as fit. A number shows that many, in rows of a readable size (fewer when the tile is too small for them); the rest are counted in \"+N more\".",
+            "default": 0,
+            "x-ui": {
+              "label": {
+                "en": "Rows",
+                "es": "Filas"
+              },
+              "help": {
+                "en": "0 = as many as fit. A number shows that many, in rows of a readable size (fewer when the tile is too small for them); the rest are counted in \"+N more\".",
+                "es": "0 = las que quepan. Con un número se ven esas, en filas de un tamaño legible (menos si la tesela no da para ellas); el resto se cuenta en «+N más»."
+              }
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30
+          },
+          "calendars": {
+            "title": "Calendars",
+            "description": "Empty: all. Names as each calendar calls itself (Work, Holidays…), comma-separated; * matches anything, a leading ! leaves out.",
+            "default": [],
+            "x-ui": {
+              "label": {
+                "en": "Calendars",
+                "es": "Calendarios"
+              },
+              "help": {
+                "en": "Empty: all. Names as each calendar calls itself (Work, Holidays…), comma-separated; * matches anything, a leading ! leaves out.",
+                "es": "Vacío: todos. Nombres como se llama cada calendario (Trabajo, Festivos…), separados por comas; * vale por cualquier cosa y un ! delante excluye."
+              },
+              "widget": "filter",
+              "choices": {
+                "source": "calendar/events",
+                "list": "calendars"
+              }
+            },
+            "type": "array",
+            "items": {
+              "default": "",
+              "x-ui": {
+                "placeholder": "name, group/*, !old-*",
+                "choices": {
+                  "source": "calendar/events",
+                  "list": "calendars"
+                }
+              },
+              "type": "string"
+            },
+            "x-filter": true
+          },
+          "greyMs": {
+            "title": "Awake from (before it starts)",
+            "description": "With no meeting this close, it lets the panel sleep.",
+            "default": 7200000,
+            "x-ui": {
+              "label": {
+                "en": "Awake from (before it starts)",
+                "es": "Despierta desde (antes de empezar)"
+              },
+              "help": {
+                "en": "With no meeting this close, it lets the panel sleep.",
+                "es": "Sin una reunión así de cerca, deja dormir al panel."
+              },
+              "unit": "ms"
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "warnMs": {
+            "title": "Warning colour from (before it starts)",
+            "description": "From here the card takes its tile over.",
+            "default": 600000,
+            "x-ui": {
+              "label": {
+                "en": "Warning colour from (before it starts)",
+                "es": "Color de aviso desde (antes de empezar)"
+              },
+              "help": {
+                "en": "From here the card takes its tile over.",
+                "es": "Desde aquí la tarjeta se queda la tesela."
+              },
+              "unit": "ms"
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "alertMs": {
+            "title": "Alert colour from (before it starts)",
+            "default": 180000,
+            "x-ui": {
+              "label": {
+                "en": "Alert colour from (before it starts)",
+                "es": "Color de alerta desde (antes de empezar)"
+              },
+              "unit": "ms"
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "holdMs": {
+            "title": "Keep the tile after a start",
+            "description": "Once you know where you are, the tile goes back to its rotation.",
+            "default": 600000,
+            "x-ui": {
+              "label": {
+                "en": "Keep the tile after a start",
+                "es": "Quedarse la tesela al empezar"
+              },
+              "help": {
+                "en": "Once you know where you are, the tile goes back to its rotation.",
+                "es": "Pasado el arranque ya sabes dónde estás, y la tesela vuelve a su turno."
+              },
+              "advanced": true,
+              "unit": "ms"
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 7200000
+          }
+        }
+      },
+      "screenshot": "docs/agenda.png",
+      "animated": false,
+      "urgent": true
+    }
+  ],
+  "sources": [
+    {
+      "type": "calendar/events",
+      "name": {
+        "en": "Calendar meetings",
+        "es": "Reuniones del calendario"
+      },
+      "description": {
+        "en": "Meetings of today and the next days from one or more published calendars (ICS). Free and focus-time events are left out, and all-day ones unless you ask for them.",
+        "es": "Las reuniones de hoy y de los próximos días de uno o varios calendarios publicados (ICS). Se dejan fuera los eventos libres y los de concentración, y los de todo el día salvo que los pidas."
+      },
+      "polled": true,
+      "intervalMs": 300000,
+      "options": {
+        "default": {
+          "urls": [],
+          "ignore": [
+            "focus time",
+            "tiempo de concentración"
+          ],
+          "horizonDays": 6,
+          "includeAllDay": false
+        },
+        "x-ui": {},
+        "type": "object",
+        "properties": {
+          "urls": {
+            "title": "Calendars (ICS addresses)",
+            "description": "The secret address of a published calendar (Outlook on the web: Settings → Calendar → Shared calendars → Publish a calendar → ICS). Anyone with it can read your agenda: treat it like a password.",
+            "default": [],
+            "x-ui": {
+              "label": {
+                "en": "Calendars (ICS addresses)",
+                "es": "Calendarios (direcciones ICS)"
+              },
+              "help": {
+                "en": "The secret address of a published calendar (Outlook on the web: Settings → Calendar → Shared calendars → Publish a calendar → ICS). Anyone with it can read your agenda: treat it like a password.",
+                "es": "La dirección secreta de un calendario publicado (Outlook web: Configuración → Calendario → Calendarios compartidos → Publicar un calendario → ICS). Quien la tenga lee tu agenda: trátala como una contraseña."
+              }
+            },
+            "type": "array",
+            "items": {
+              "title": "ICS address",
+              "description": "Secret: leave it empty (or a placeholder such as \"<token>\"). Kiosko keeps the value it already has, or asks for it in the editor.",
+              "default": "",
+              "x-ui": {
+                "label": {
+                  "en": "ICS address",
+                  "es": "Dirección ICS"
+                },
+                "secret": true,
+                "placeholder": "https://outlook.office365.com/owa/calendar/…/calendar.ics",
+                "format": "url"
+              },
+              "x-secret": true,
+              "x-risk": "network",
+              "type": "string"
+            },
+            "maxItems": 10
+          },
+          "ignore": {
+            "title": "Ignore titles containing",
+            "description": "Busy blocks that are not meetings, like focus time. Case and accents don’t matter.",
+            "default": [
+              "focus time",
+              "tiempo de concentración"
+            ],
+            "x-ui": {
+              "label": {
+                "en": "Ignore titles containing",
+                "es": "Ignorar títulos que contengan"
+              },
+              "help": {
+                "en": "Busy blocks that are not meetings, like focus time. Case and accents don’t matter.",
+                "es": "Bloques ocupados que no son reuniones, como el tiempo de concentración. Da igual mayúsculas y tildes."
+              }
+            },
+            "type": "array",
+            "items": {
+              "title": "Text",
+              "default": "",
+              "x-ui": {
+                "label": {
+                  "en": "Text",
+                  "es": "Texto"
+                }
+              },
+              "type": "string"
+            }
+          },
+          "horizonDays": {
+            "title": "Days ahead",
+            "description": "Besides today. The agenda shows as many days as this plus one, at most.",
+            "default": 6,
+            "x-ui": {
+              "label": {
+                "en": "Days ahead",
+                "es": "Días por delante"
+              },
+              "help": {
+                "en": "Besides today. The agenda shows as many days as this plus one, at most.",
+                "es": "Además de hoy. La agenda enseña como mucho estos días más uno."
+              }
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 14
+          },
+          "includeAllDay": {
+            "title": "Include all-day events",
+            "description": "Holidays, trips, on-call days: listed at the top of their day in the agenda. They never count as the next meeting.",
+            "default": false,
+            "x-ui": {
+              "label": {
+                "en": "Include all-day events",
+                "es": "Incluir los eventos de todo el día"
+              },
+              "help": {
+                "en": "Holidays, trips, on-call days: listed at the top of their day in the agenda. They never count as the next meeting.",
+                "es": "Festivos, viajes, guardias: salen al principio de su día en la agenda. Nunca cuentan como la próxima reunión."
+              }
+            },
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  ],
+  "interludes": [],
+  "templates": []
+}
