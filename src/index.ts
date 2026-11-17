@@ -90,6 +90,10 @@ export const events = defineSource({
     return mergeMeetings(all);
   },
   demo: ({ now, locale }) => demoMeetings(now, locale),
+  // The calendars the meetings came from (their own names), for the widgets' filter.
+  choices: {
+    calendars: (meetings) => [...new Set((Array.isArray(meetings) ? meetings : []).flatMap((m) => m.calendars ?? []))].sort((a, b) => a.localeCompare(b)).map((value) => ({ value })),
+  },
 });
 
 /** The source's meetings, as the widget's options select them; undefined before there is a calendar. */
@@ -104,6 +108,7 @@ const before = (def: number, label: Localized, help?: Localized) => t.duration({
 
 const calendarsFilter = () =>
   t.filter({
+    choices: { source: 'calendar/events', list: 'calendars' },
     label: { en: 'Calendars', es: 'Calendarios' },
     help: {
       en: 'Empty: all. Names as each calendar calls itself (Work, Holidays…), comma-separated; * matches anything, a leading ! leaves out.',
@@ -233,6 +238,8 @@ export default definePlugin({
   id: 'calendar',
   name: { en: 'Calendar', es: 'Calendario' },
   version: '0.2.1',
+  sdk: '^0.2.0',
+  permissions: { network: ['user'] },
   description: {
     en: 'Meetings from published ICS calendars (Outlook/Teams, Google…): a countdown to the next one and the agenda of the next days.',
     es: 'Reuniones de calendarios ICS publicados (Outlook/Teams, Google…): una cuenta atrás hasta la siguiente y la agenda de los próximos días.',

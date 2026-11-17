@@ -20,6 +20,10 @@ npm install --prefix ~/.config/kiosko/plugins kiosko-plugin-calendar
 
 - The ICS address of a published calendar (Outlook: *Settings → Calendar → Shared calendars → Publish*; Google: *Secret address in iCal format*). Treat it as a password.
 
+## What it does on your machine
+
+- **Internet**: contacts the ones you set in its options.
+
 ## Widgets
 
 ### Next meeting — `calendar/next`
