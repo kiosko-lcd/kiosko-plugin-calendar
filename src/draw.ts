@@ -2,7 +2,7 @@
  * Painting the two calendar cards. Everything is sized from the box it gets,
  * so the same code serves a 320×240 corner and a 1920×462 strip.
  */
-import { drawMore, listLayout, type Box, type Formatters, type Graphics, type Localized, type RenderContext, type Theme } from '@kiosko/sdk';
+import { drawMore, hanScript, listLayout, type Box, type Formatters, type Graphics, type Localized, type RenderContext, type Theme } from '@kiosko/sdk';
 import type { Meeting } from './ics.ts';
 import { agendaNow, dayStart, daysFrom, displayTitle, levelColor, meetingLevel, TEXTS, type Thresholds } from './meeting.ts';
 
@@ -29,6 +29,24 @@ function weekday(ms: number, locale: string): string {
   } catch {
     return new Date(ms).toLocaleDateString('en', { weekday: 'long' });
   }
+}
+
+/**
+ * A day of the agenda by its date: "Friday 20" (`viernes 20`), and in
+ * Chinese, Japanese and Korean the way they write it, month included:
+ * "11月20日 星期五".
+ */
+export function dayDate(ms: number, locale: string): string {
+  if (hanScript(locale)) {
+    try {
+      const parts = new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric', weekday: 'long' }).formatToParts(new Date(ms));
+      // A space before the weekday where the language runs it on: 11月20日星期五 → 11月20日 星期五.
+      return parts.map((x, i) => (x.type === 'weekday' && i > 0 && !/\s$/.test(parts[i - 1]!.value) ? ` ${x.value}` : x.value)).join('');
+    } catch {
+      /* the plain form below */
+    }
+  }
+  return `${weekday(ms, locale)} ${new Date(ms).getDate()}`;
 }
 
 /**
@@ -125,7 +143,7 @@ export function drawNext(p: Painter, box: Box, m: Meeting, o: Thresholds & { sho
   const label =
     (started ? tr(TEXTS.inProgress) : days <= 0 ? tr(TEXTS.next) : days === 1 ? tr(TEXTS.tomorrow) : weekday(m.startsAt, p.locale)) +
     (m.tentative ? ` · ${tr(TEXTS.tentative)}` : '');
-  const range = `${hhmm(m.startsAt)}–${hhmm(m.endsAt)}`;
+  const range = fmt.range(m.startsAt, m.endsAt);
   const title = displayTitle(m, tr, o.showTitle);
   const who = o.showTitle && o.showAttendees && !m.private && m.attendees?.length ? m.attendees.join(', ') : '';
   const big = started ? tr(TEXTS.nowBig) : days <= 0 ? countdown(m.startsAt - now) : hhmm(m.startsAt);
@@ -270,7 +288,7 @@ export function drawAgenda(p: Painter, box: Box, meetings: readonly Meeting[], o
 
   const dayTitle = (offset: number) => {
     const ms = dayStart(now, offset);
-    const date = `${weekday(ms, p.locale)} ${new Date(ms).getDate()}`;
+    const date = dayDate(ms, p.locale);
     return offset === 0 ? `${tr(TEXTS.today)} · ${date}` : offset === 1 ? `${tr(TEXTS.tomorrow)} · ${date}` : date;
   };
 
