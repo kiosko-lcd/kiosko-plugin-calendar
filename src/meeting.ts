@@ -103,22 +103,22 @@ export function daysFrom(now: number, ms: number): number {
 }
 
 export const TEXTS = {
-  meeting: { en: 'Meeting', es: 'Reunión' },
-  private: { en: 'Private meeting', es: 'Reunión privada' },
-  tentative: { en: 'tentative', es: 'provisional' },
-  inProgress: { en: 'In progress', es: 'En curso' },
-  next: { en: 'Next', es: 'Siguiente' },
-  today: { en: 'Today', es: 'Hoy' },
-  tomorrow: { en: 'Tomorrow', es: 'Mañana' },
-  nowBig: { en: 'now', es: 'ahora' },
-  endsIn: { en: 'ends in', es: 'acaba en' },
-  in: { en: 'in', es: 'en' },
-  noMore: { en: 'No more meetings', es: 'No quedan reuniones' },
-  noneToday: { en: 'Nothing else today', es: 'Nada más hoy' },
-  noneTomorrow: { en: 'No meetings', es: 'Sin reuniones' },
-  allDay: { en: 'all day', es: 'todo el día' },
-  noCalendar: { en: 'No calendar yet', es: 'Aún sin calendario' },
-  noCalendarHelp: { en: 'Add its ICS address in Settings → Data sources', es: 'Pon su dirección ICS en Ajustes → Fuentes de datos' },
+  meeting: { en: 'Meeting', es: 'Reunión', 'zh-Hant': '會議', 'zh-Hans': '会议' },
+  private: { en: 'Private meeting', es: 'Reunión privada', 'zh-Hant': '私人會議', 'zh-Hans': '私人会议' },
+  tentative: { en: 'tentative', es: 'provisional', 'zh-Hant': '暫定', 'zh-Hans': '暂定' },
+  inProgress: { en: 'In progress', es: 'En curso', 'zh-Hant': '進行中', 'zh-Hans': '进行中' },
+  next: { en: 'Next', es: 'Siguiente', 'zh-Hant': '下一場', 'zh-Hans': '下一场' },
+  today: { en: 'Today', es: 'Hoy', 'zh-Hant': '今天', 'zh-Hans': '今天' },
+  tomorrow: { en: 'Tomorrow', es: 'Mañana', 'zh-Hant': '明天', 'zh-Hans': '明天' },
+  nowBig: { en: 'now', es: 'ahora', 'zh-Hant': '現在', 'zh-Hans': '现在' },
+  endsIn: { en: 'ends in', es: 'acaba en', 'zh-Hant': '還剩', 'zh-Hans': '还剩' },
+  in: { en: 'in', es: 'en', 'zh-Hant': '再過', 'zh-Hans': '再过' },
+  noMore: { en: 'No more meetings', es: 'No quedan reuniones', 'zh-Hant': '沒有其他會議', 'zh-Hans': '没有其他会议' },
+  noneToday: { en: 'Nothing else today', es: 'Nada más hoy', 'zh-Hant': '今天沒有其他行程', 'zh-Hans': '今天没有其他安排' },
+  noneTomorrow: { en: 'No meetings', es: 'Sin reuniones', 'zh-Hant': '沒有會議', 'zh-Hans': '没有会议' },
+  allDay: { en: 'all day', es: 'todo el día', 'zh-Hant': '全天', 'zh-Hans': '全天' },
+  noCalendar: { en: 'No calendar yet', es: 'Aún sin calendario', 'zh-Hant': '尚未設定行事曆', 'zh-Hans': '尚未设置日历' },
+  noCalendarHelp: { en: 'Add its ICS address in Settings → Data sources', es: 'Pon su dirección ICS en Ajustes → Fuentes de datos', 'zh-Hant': '請在「設定 → 資料來源」中加入它的 ICS 網址', 'zh-Hans': '请在“设置 → 数据源”中添加它的 ICS 网址' },
 } satisfies Record<string, Localized>;
 
 /** What a tile may say about a meeting: private ones never show their title. */

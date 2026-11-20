@@ -26,38 +26,42 @@ const MIN = 60_000;
 
 export const events = defineSource({
   id: 'events',
-  name: { en: 'Calendar meetings', es: 'Reuniones del calendario' },
+  name: { en: 'Calendar meetings', es: 'Reuniones del calendario', 'zh-Hant': '行事曆會議', 'zh-Hans': '日历会议' },
   description: {
     en: 'Meetings of today and the next days from one or more published calendars (ICS). Free and focus-time events are left out, and all-day ones unless you ask for them.',
     es: 'Las reuniones de hoy y de los próximos días de uno o varios calendarios publicados (ICS). Se dejan fuera los eventos libres y los de concentración, y los de todo el día salvo que los pidas.',
+    'zh-Hant': '從一個或多個已發布的行事曆（ICS）取得今天及接下來幾天的會議。空閒與專注時間的活動會排除，全天活動也會排除，除非你要求顯示。',
+    'zh-Hans': '从一个或多个已发布的日历（ICS）获取今天及接下来几天的会议。空闲和专注时间的事件会被排除，全天事件也会排除，除非你要求显示。',
   },
   options: t.object({
     urls: t.list(
-      t.string({ secret: true, format: 'url', risk: 'network', placeholder: 'https://outlook.office365.com/owa/calendar/…/calendar.ics', label: { en: 'ICS address', es: 'Dirección ICS' } }),
+      t.string({ secret: true, format: 'url', risk: 'network', placeholder: 'https://outlook.office365.com/owa/calendar/…/calendar.ics', label: { en: 'ICS address', es: 'Dirección ICS', 'zh-Hant': 'ICS 網址', 'zh-Hans': 'ICS 网址' } }),
       {
         max: 10,
-        label: { en: 'Calendars (ICS addresses)', es: 'Calendarios (direcciones ICS)' },
+        label: { en: 'Calendars (ICS addresses)', es: 'Calendarios (direcciones ICS)', 'zh-Hant': '行事曆（ICS 網址）', 'zh-Hans': '日历（ICS 网址）' },
         help: {
           en: 'The secret address of a published calendar (Outlook on the web: Settings → Calendar → Shared calendars → Publish a calendar → ICS). Anyone with it can read your agenda: treat it like a password.',
           es: 'La dirección secreta de un calendario publicado (Outlook web: Configuración → Calendario → Calendarios compartidos → Publicar un calendario → ICS). Quien la tenga lee tu agenda: trátala como una contraseña.',
+          'zh-Hant': '已發布行事曆的私密網址（Outlook 網頁版：設定 → 行事曆 → 共用行事曆 → 發布行事曆 → ICS）。任何人拿到它都能讀取你的行程：請像密碼一樣保管。',
+          'zh-Hans': '已发布日历的私密网址（Outlook 网页版：设置 → 日历 → 共享日历 → 发布日历 → ICS）。任何人拿到它都能读取你的日程：请像密码一样保管。',
         },
       },
     ),
-    ignore: t.list(t.string({ label: { en: 'Text', es: 'Texto' } }), {
+    ignore: t.list(t.string({ label: { en: 'Text', es: 'Texto', 'zh-Hant': '文字', 'zh-Hans': '文本' } }), {
       default: [...DEFAULT_IGNORE],
-      label: { en: 'Ignore titles containing', es: 'Ignorar títulos que contengan' },
-      help: { en: 'Busy blocks that are not meetings, like focus time. Case and accents don’t matter.', es: 'Bloques ocupados que no son reuniones, como el tiempo de concentración. Da igual mayúsculas y tildes.' },
+      label: { en: 'Ignore titles containing', es: 'Ignorar títulos que contengan', 'zh-Hant': '忽略標題包含以下文字者', 'zh-Hans': '忽略标题包含以下文字的' },
+      help: { en: 'Busy blocks that are not meetings, like focus time. Case and accents don’t matter.', es: 'Bloques ocupados que no son reuniones, como el tiempo de concentración. Da igual mayúsculas y tildes.', 'zh-Hant': '不是會議的忙碌時段，例如專注時間。不分大小寫與重音符號。', 'zh-Hans': '不是会议的忙碌时段，例如专注时间。不区分大小写和重音符号。' },
     }),
     horizonDays: t.integer({
       default: 6,
       min: 0,
       max: 14,
-      label: { en: 'Days ahead', es: 'Días por delante' },
-      help: { en: 'Besides today. The agenda shows as many days as this plus one, at most.', es: 'Además de hoy. La agenda enseña como mucho estos días más uno.' },
+      label: { en: 'Days ahead', es: 'Días por delante', 'zh-Hant': '往後天數', 'zh-Hans': '往后天数' },
+      help: { en: 'Besides today. The agenda shows as many days as this plus one, at most.', es: 'Además de hoy. La agenda enseña como mucho estos días más uno.', 'zh-Hant': '不含今天。行程最多顯示此天數加一天。', 'zh-Hans': '不含今天。日程最多显示此天数加一天。' },
     }),
     includeAllDay: t.boolean({
-      label: { en: 'Include all-day events', es: 'Incluir los eventos de todo el día' },
-      help: { en: 'Holidays, trips, on-call days: listed at the top of their day in the agenda. They never count as the next meeting.', es: 'Festivos, viajes, guardias: salen al principio de su día en la agenda. Nunca cuentan como la próxima reunión.' },
+      label: { en: 'Include all-day events', es: 'Incluir los eventos de todo el día', 'zh-Hant': '包含全天活動', 'zh-Hans': '包含全天事件' },
+      help: { en: 'Holidays, trips, on-call days: listed at the top of their day in the agenda. They never count as the next meeting.', es: 'Festivos, viajes, guardias: salen al principio de su día en la agenda. Nunca cuentan como la próxima reunión.', 'zh-Hant': '假日、出差、值班日：列在行程中當天的最上方。它們永遠不會算作下一場會議。', 'zh-Hans': '假日、出差、值班日：列在日程中当天的最上方。它们永远不会算作下一场会议。' },
     }),
   }),
   intervalMs: 5 * MIN,
@@ -109,19 +113,23 @@ const before = (def: number, label: Localized, help?: Localized) => t.duration({
 const calendarsFilter = () =>
   t.filter({
     choices: { source: 'calendar/events', list: 'calendars' },
-    label: { en: 'Calendars', es: 'Calendarios' },
+    label: { en: 'Calendars', es: 'Calendarios', 'zh-Hant': '行事曆', 'zh-Hans': '日历' },
     help: {
       en: 'Empty: all. Names as each calendar calls itself (Work, Holidays…), comma-separated; * matches anything, a leading ! leaves out.',
       es: 'Vacío: todos. Nombres como se llama cada calendario (Trabajo, Festivos…), separados por comas; * vale por cualquier cosa y un ! delante excluye.',
+      'zh-Hant': '留空：全部。各行事曆自己的名稱（工作、假日…），以逗號分隔；* 比對任何內容，開頭加 ! 表示排除。',
+      'zh-Hans': '留空：全部。各日历自身的名称（工作、假日…），用逗号分隔；* 匹配任意内容，开头加 ! 表示排除。',
     },
   });
 
 export const next = defineWidget({
   id: 'next',
-  name: { en: 'Next meeting', es: 'Próxima reunión' },
+  name: { en: 'Next meeting', es: 'Próxima reunión', 'zh-Hant': '下一場會議', 'zh-Hans': '下一场会议' },
   description: {
     en: 'A big countdown to your next meeting. Its colour climbs the semaphore as it nears, and it takes the tile over when it’s about to start.',
     es: 'Una cuenta atrás grande hasta tu próxima reunión. Su color sube por el semáforo según se acerca, y se queda la tesela cuando está a punto de empezar.',
+    'zh-Hant': '距離下一場會議的大字倒數。越接近顏色越往紅綠燈的紅色走，快開始時會佔據整個方格。',
+    'zh-Hans': '距离下一场会议的大字倒计时。越接近颜色越往红绿灯的红色走，快开始时会占据整个格子。',
   },
   icon: 'calendar-clock',
   category: 'time',
@@ -131,19 +139,19 @@ export const next = defineWidget({
   options: t.object({
     showTitle: t.boolean({
       default: true,
-      label: { en: 'Show the title', es: 'Mostrar el título' },
-      help: { en: 'Off: only the time and the countdown. Private meetings never show it.', es: 'Apagado: sólo la hora y la cuenta atrás. Las privadas nunca lo enseñan.' },
+      label: { en: 'Show the title', es: 'Mostrar el título', 'zh-Hant': '顯示標題', 'zh-Hans': '显示标题' },
+      help: { en: 'Off: only the time and the countdown. Private meetings never show it.', es: 'Apagado: sólo la hora y la cuenta atrás. Las privadas nunca lo enseñan.', 'zh-Hant': '關閉：只顯示時間與倒數。私人會議一律不顯示標題。', 'zh-Hans': '关闭：只显示时间和倒计时。私人会议一律不显示标题。' },
     }),
     showAttendees: t.boolean({
       default: true,
-      label: { en: 'Show who attends', es: 'Mostrar quién asiste' },
-      help: { en: 'With the title. Outlook’s published calendars don’t carry them.', es: 'Junto al título. Los calendarios publicados de Outlook no los traen.' },
+      label: { en: 'Show who attends', es: 'Mostrar quién asiste', 'zh-Hant': '顯示與會者', 'zh-Hans': '显示参会人' },
+      help: { en: 'With the title. Outlook’s published calendars don’t carry them.', es: 'Junto al título. Los calendarios publicados de Outlook no los traen.', 'zh-Hant': '與標題一起顯示。Outlook 發布的行事曆不含與會者。', 'zh-Hans': '与标题一起显示。Outlook 发布的日历不含参会人。' },
     }),
-    greyMs: before(DEFAULT_THRESHOLDS.greyMs, { en: 'Awake from (before it starts)', es: 'Despierta desde (antes de empezar)' }, { en: 'Further away it is drawn dim and lets the panel sleep.', es: 'Más lejos se pinta tenue y deja dormir al panel.' }),
-    readyMs: before(DEFAULT_THRESHOLDS.readyMs, { en: 'Info colour from (before it starts)', es: 'Color informativo desde (antes de empezar)' }),
-    warnMs: before(DEFAULT_THRESHOLDS.warnMs, { en: 'Warning colour from (before it starts)', es: 'Color de aviso desde (antes de empezar)' }, { en: 'Also when, back to back, the next meeting replaces the one under way.', es: 'También cuando, con reuniones seguidas, la siguiente sustituye a la que está en curso.' }),
-    alertMs: before(DEFAULT_THRESHOLDS.alertMs, { en: 'Alert from (before it starts)', es: 'Alerta desde (antes de empezar)' }, { en: 'From here until it ends, it takes its tile over.', es: 'Desde aquí hasta que acaba, se queda la tesela.' }),
-    hideTentative: t.boolean({ label: { en: 'Skip tentative meetings', es: 'Saltar las provisionales' }, help: { en: 'Invitations not accepted yet.', es: 'Invitaciones aún sin aceptar.' } }),
+    greyMs: before(DEFAULT_THRESHOLDS.greyMs, { en: 'Awake from (before it starts)', es: 'Despierta desde (antes de empezar)', 'zh-Hant': '開始前多久喚醒', 'zh-Hans': '开始前多久唤醒' }, { en: 'Further away it is drawn dim and lets the panel sleep.', es: 'Más lejos se pinta tenue y deja dormir al panel.', 'zh-Hant': '離開始還早時會以暗色繪製，並讓面板休眠。', 'zh-Hans': '离开始还早时以暗色绘制，并让屏幕休眠。' }),
+    readyMs: before(DEFAULT_THRESHOLDS.readyMs, { en: 'Info colour from (before it starts)', es: 'Color informativo desde (antes de empezar)', 'zh-Hant': '開始前多久轉為資訊色', 'zh-Hans': '开始前多久变为信息色' }),
+    warnMs: before(DEFAULT_THRESHOLDS.warnMs, { en: 'Warning colour from (before it starts)', es: 'Color de aviso desde (antes de empezar)', 'zh-Hant': '開始前多久轉為警告色', 'zh-Hans': '开始前多久变为警告色' }, { en: 'Also when, back to back, the next meeting replaces the one under way.', es: 'También cuando, con reuniones seguidas, la siguiente sustituye a la que está en curso.', 'zh-Hant': '會議接連進行時，下一場取代進行中的會議也會套用。', 'zh-Hans': '会议连着开时，下一场取代进行中的会议也会适用。' }),
+    alertMs: before(DEFAULT_THRESHOLDS.alertMs, { en: 'Alert from (before it starts)', es: 'Alerta desde (antes de empezar)', 'zh-Hant': '開始前多久進入警示', 'zh-Hans': '开始前多久进入警报' }, { en: 'From here until it ends, it takes its tile over.', es: 'Desde aquí hasta que acaba, se queda la tesela.', 'zh-Hant': '從這時起直到會議結束，都會佔據它的方格。', 'zh-Hans': '从这时起直到会议结束，都会占据它的格子。' }),
+    hideTentative: t.boolean({ label: { en: 'Skip tentative meetings', es: 'Saltar las provisionales', 'zh-Hant': '略過暫定的會議', 'zh-Hans': '跳过暂定的会议' }, help: { en: 'Invitations not accepted yet.', es: 'Invitaciones aún sin aceptar.', 'zh-Hant': '尚未接受的邀請。', 'zh-Hans': '尚未接受的邀请。' } }),
     calendars: calendarsFilter(),
   }),
   redraw: 'minute',
@@ -173,10 +181,12 @@ export const next = defineWidget({
 
 export const agenda = defineWidget({
   id: 'agenda',
-  name: { en: 'Agenda', es: 'Agenda' },
+  name: { en: 'Agenda', es: 'Agenda', 'zh-Hant': '行程', 'zh-Hans': '日程' },
   description: {
     en: 'The meetings left today and those of the next days: the one under way highlighted, the next one with its countdown.',
     es: 'Las reuniones que quedan hoy y las de los próximos días: la que está en curso resaltada, la siguiente con su cuenta atrás.',
+    'zh-Hant': '今天剩下的會議與接下來幾天的會議：進行中的會醒目標示，下一場附倒數。',
+    'zh-Hans': '今天剩下的会议和接下来几天的会议：进行中的会突出显示，下一场附倒计时。',
   },
   icon: 'calendar-days',
   category: 'time',
@@ -188,25 +198,25 @@ export const agenda = defineWidget({
       default: 2,
       min: 1,
       max: 7,
-      label: { en: 'Days', es: 'Días' },
-      help: { en: 'Today included: 1 is only today, 2 today and tomorrow. The source must look as many days ahead, minus one.', es: 'Hoy incluido: 1 es sólo hoy, 2 hoy y mañana. La fuente debe mirar esos días por delante, menos uno.' },
+      label: { en: 'Days', es: 'Días', 'zh-Hant': '天數', 'zh-Hans': '天数' },
+      help: { en: 'Today included: 1 is only today, 2 today and tomorrow. The source must look as many days ahead, minus one.', es: 'Hoy incluido: 1 es sólo hoy, 2 hoy y mañana. La fuente debe mirar esos días por delante, menos uno.', 'zh-Hant': '含今天：1 表示只有今天，2 表示今天和明天。資料來源往後查看的天數須為此值減一。', 'zh-Hans': '含今天：1 表示只有今天，2 表示今天和明天。数据源往后查看的天数须为此值减一。' },
     }),
     showTitle: t.boolean({
       default: true,
-      label: { en: 'Show the titles', es: 'Mostrar los títulos' },
-      help: { en: 'Off: "Meeting" instead, for a screen others see. Private meetings never show theirs.', es: 'Apagado: «Reunión» en su lugar, para una pantalla que ven otros. Las privadas nunca lo enseñan.' },
+      label: { en: 'Show the titles', es: 'Mostrar los títulos', 'zh-Hant': '顯示標題', 'zh-Hans': '显示标题' },
+      help: { en: 'Off: "Meeting" instead, for a screen others see. Private meetings never show theirs.', es: 'Apagado: «Reunión» en su lugar, para una pantalla que ven otros. Las privadas nunca lo enseñan.', 'zh-Hant': '關閉：改顯示「會議」，適合別人也看得到的螢幕。私人會議一律不顯示標題。', 'zh-Hans': '关闭：改为显示“会议”，适合别人也能看到的屏幕。私人会议一律不显示标题。' },
     }),
     ...listOptions(),
     calendars: calendarsFilter(),
-    greyMs: before(DEFAULT_THRESHOLDS.greyMs, { en: 'Awake from (before it starts)', es: 'Despierta desde (antes de empezar)' }, { en: 'With no meeting this close, it lets the panel sleep.', es: 'Sin una reunión así de cerca, deja dormir al panel.' }),
-    warnMs: before(DEFAULT_THRESHOLDS.warnMs, { en: 'Warning colour from (before it starts)', es: 'Color de aviso desde (antes de empezar)' }, { en: 'From here the card takes its tile over.', es: 'Desde aquí la tarjeta se queda la tesela.' }),
-    alertMs: before(DEFAULT_THRESHOLDS.alertMs, { en: 'Alert colour from (before it starts)', es: 'Color de alerta desde (antes de empezar)' }),
+    greyMs: before(DEFAULT_THRESHOLDS.greyMs, { en: 'Awake from (before it starts)', es: 'Despierta desde (antes de empezar)', 'zh-Hant': '開始前多久喚醒', 'zh-Hans': '开始前多久唤醒' }, { en: 'With no meeting this close, it lets the panel sleep.', es: 'Sin una reunión así de cerca, deja dormir al panel.', 'zh-Hant': '沒有這麼近的會議時，會讓面板休眠。', 'zh-Hans': '没有这么近的会议时，会让屏幕休眠。' }),
+    warnMs: before(DEFAULT_THRESHOLDS.warnMs, { en: 'Warning colour from (before it starts)', es: 'Color de aviso desde (antes de empezar)', 'zh-Hant': '開始前多久轉為警告色', 'zh-Hans': '开始前多久变为警告色' }, { en: 'From here the card takes its tile over.', es: 'Desde aquí la tarjeta se queda la tesela.', 'zh-Hant': '從這時起，卡片會佔據它的方格。', 'zh-Hans': '从这时起，卡片会占据它的格子。' }),
+    alertMs: before(DEFAULT_THRESHOLDS.alertMs, { en: 'Alert colour from (before it starts)', es: 'Color de alerta desde (antes de empezar)', 'zh-Hant': '開始前多久轉為警示色', 'zh-Hans': '开始前多久变为警报色' }),
     holdMs: t.duration({
       default: 10 * MIN,
       max: 120 * MIN,
       advanced: true,
-      label: { en: 'Keep the tile after a start', es: 'Quedarse la tesela al empezar' },
-      help: { en: 'Once you know where you are, the tile goes back to its rotation.', es: 'Pasado el arranque ya sabes dónde estás, y la tesela vuelve a su turno.' },
+      label: { en: 'Keep the tile after a start', es: 'Quedarse la tesela al empezar', 'zh-Hant': '開始後仍佔據方格', 'zh-Hans': '开始后仍占据格子' },
+      help: { en: 'Once you know where you are, the tile goes back to its rotation.', es: 'Pasado el arranque ya sabes dónde estás, y la tesela vuelve a su turno.', 'zh-Hant': '開始一陣子後你已經知道該去哪裡，方格就會回到輪播。', 'zh-Hans': '开始一阵子后你已经知道该去哪里，格子就会回到轮播。' },
     }),
   }),
   redraw: 'minute',
@@ -236,13 +246,15 @@ export const agenda = defineWidget({
 
 export default definePlugin({
   id: 'calendar',
-  name: { en: 'Calendar', es: 'Calendario' },
+  name: { en: 'Calendar', es: 'Calendario', 'zh-Hant': '行事曆', 'zh-Hans': '日历' },
   version: '0.2.1',
   sdk: '^0.2.0',
   permissions: { network: ['user'] },
   description: {
     en: 'Meetings from published ICS calendars (Outlook/Teams, Google…): a countdown to the next one and the agenda of the next days.',
     es: 'Reuniones de calendarios ICS publicados (Outlook/Teams, Google…): una cuenta atrás hasta la siguiente y la agenda de los próximos días.',
+    'zh-Hant': '來自已發布 ICS 行事曆（Outlook/Teams、Google…）的會議：下一場的倒數與接下來幾天的行程。',
+    'zh-Hans': '来自已发布 ICS 日历（Outlook/Teams、Google…）的会议：下一场的倒计时和接下来几天的日程。',
   },
   author: 'Kiosko',
   license: 'MIT',
