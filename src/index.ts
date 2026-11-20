@@ -10,7 +10,7 @@
  * The source keeps a copy of every feed on disk (named after a hash of the
  * address, which is a secret) and falls back to it when offline.
  */
-import { definePlugin, defineSource, defineWidget, drawEmpty, listOptions, t, type Localized, type RenderContext } from '@kiosko/sdk';
+import { definePlugin, defineSource, defineWidget, drawEmpty, listOptions, PluginError, t, type Localized, type RenderContext } from '@kiosko/sdk';
 import { demoMeetings } from './demo.ts';
 import { agendaDays, drawAgenda, drawMessage, drawNext, type Painter } from './draw.ts';
 import { fetchAll } from './feed.ts';
@@ -71,7 +71,12 @@ export const events = defineSource({
   async read(ctx): Promise<Meeting[]> {
     const { options: o } = ctx;
     const urls = icsUrls(o.urls);
-    if (!urls.length) throw new Error('no calendar: add the ICS address of a published calendar to this source');
+    if (!urls.length) throw new PluginError({
+        en: 'No calendar: add the ICS address of a published calendar to this source',
+        es: 'Sin calendario: pon en esta fuente la dirección ICS de un calendario publicado',
+        'zh-Hant': '沒有行事曆：請在這個資料來源中加入已發布行事曆的 ICS 網址',
+        'zh-Hans': '没有日历：请在此数据源中添加已发布日历的 ICS 网址',
+      });
     // Only now, with a calendar configured, is the optional dependency loaded.
     const ICAL = await loadIcal();
     if (!ICAL) throw new Error('the optional dependency ical.js is not installed (npm install ical.js)');
@@ -90,7 +95,12 @@ export const events = defineSource({
         unreadable++;
       }
     }
-    if (unreadable === feeds.length) throw new Error('the calendar feed could not be parsed as iCalendar');
+    if (unreadable === feeds.length) throw new PluginError({
+        en: 'The calendar could not be read as iCalendar: check that its address is the ICS one',
+        es: 'El calendario no se pudo leer como iCalendar: comprueba que su dirección es la ICS',
+        'zh-Hant': '無法以 iCalendar 格式讀取行事曆：請確認網址是 ICS 網址',
+        'zh-Hans': '无法以 iCalendar 格式读取日历：请确认网址是 ICS 网址',
+      });
     return mergeMeetings(all);
   },
   demo: ({ now, locale }) => demoMeetings(now, locale),
@@ -147,7 +157,7 @@ export const next = defineWidget({
       label: { en: 'Show who attends', es: 'Mostrar quién asiste', 'zh-Hant': '顯示與會者', 'zh-Hans': '显示参会人' },
       help: { en: 'With the title. Outlook’s published calendars don’t carry them.', es: 'Junto al título. Los calendarios publicados de Outlook no los traen.', 'zh-Hant': '與標題一起顯示。Outlook 發布的行事曆不含與會者。', 'zh-Hans': '与标题一起显示。Outlook 发布的日历不含参会人。' },
     }),
-    greyMs: before(DEFAULT_THRESHOLDS.greyMs, { en: 'Awake from (before it starts)', es: 'Despierta desde (antes de empezar)', 'zh-Hant': '開始前多久喚醒', 'zh-Hans': '开始前多久唤醒' }, { en: 'Further away it is drawn dim and lets the panel sleep.', es: 'Más lejos se pinta tenue y deja dormir al panel.', 'zh-Hant': '離開始還早時會以暗色繪製，並讓面板休眠。', 'zh-Hans': '离开始还早时以暗色绘制，并让屏幕休眠。' }),
+    greyMs: before(DEFAULT_THRESHOLDS.greyMs, { en: 'Awake from (before it starts)', es: 'Despierta desde (antes de empezar)', 'zh-Hant': '開始前多久喚醒', 'zh-Hans': '开始前多久唤醒' }, { en: 'Further away it is drawn dim and lets the panel sleep.', es: 'Más lejos se pinta tenue y deja dormir al panel.', 'zh-Hant': '離開始還早時會以暗色繪製，並讓面板休眠。', 'zh-Hans': '离开始还早时以暗色绘制，并让副屏休眠。' }),
     readyMs: before(DEFAULT_THRESHOLDS.readyMs, { en: 'Info colour from (before it starts)', es: 'Color informativo desde (antes de empezar)', 'zh-Hant': '開始前多久轉為資訊色', 'zh-Hans': '开始前多久变为信息色' }),
     warnMs: before(DEFAULT_THRESHOLDS.warnMs, { en: 'Warning colour from (before it starts)', es: 'Color de aviso desde (antes de empezar)', 'zh-Hant': '開始前多久轉為警告色', 'zh-Hans': '开始前多久变为警告色' }, { en: 'Also when, back to back, the next meeting replaces the one under way.', es: 'También cuando, con reuniones seguidas, la siguiente sustituye a la que está en curso.', 'zh-Hant': '會議接連進行時，下一場取代進行中的會議也會套用。', 'zh-Hans': '会议连着开时，下一场取代进行中的会议也会适用。' }),
     alertMs: before(DEFAULT_THRESHOLDS.alertMs, { en: 'Alert from (before it starts)', es: 'Alerta desde (antes de empezar)', 'zh-Hant': '開始前多久進入警示', 'zh-Hans': '开始前多久进入警报' }, { en: 'From here until it ends, it takes its tile over.', es: 'Desde aquí hasta que acaba, se queda la tesela.', 'zh-Hant': '從這時起直到會議結束，都會佔據它的方格。', 'zh-Hans': '从这时起直到会议结束，都会占据它的格子。' }),
@@ -208,7 +218,7 @@ export const agenda = defineWidget({
     }),
     ...listOptions(),
     calendars: calendarsFilter(),
-    greyMs: before(DEFAULT_THRESHOLDS.greyMs, { en: 'Awake from (before it starts)', es: 'Despierta desde (antes de empezar)', 'zh-Hant': '開始前多久喚醒', 'zh-Hans': '开始前多久唤醒' }, { en: 'With no meeting this close, it lets the panel sleep.', es: 'Sin una reunión así de cerca, deja dormir al panel.', 'zh-Hant': '沒有這麼近的會議時，會讓面板休眠。', 'zh-Hans': '没有这么近的会议时，会让屏幕休眠。' }),
+    greyMs: before(DEFAULT_THRESHOLDS.greyMs, { en: 'Awake from (before it starts)', es: 'Despierta desde (antes de empezar)', 'zh-Hant': '開始前多久喚醒', 'zh-Hans': '开始前多久唤醒' }, { en: 'With no meeting this close, it lets the panel sleep.', es: 'Sin una reunión así de cerca, deja dormir al panel.', 'zh-Hant': '沒有這麼近的會議時，會讓面板休眠。', 'zh-Hans': '没有这么近的会议时，会让副屏休眠。' }),
     warnMs: before(DEFAULT_THRESHOLDS.warnMs, { en: 'Warning colour from (before it starts)', es: 'Color de aviso desde (antes de empezar)', 'zh-Hant': '開始前多久轉為警告色', 'zh-Hans': '开始前多久变为警告色' }, { en: 'From here the card takes its tile over.', es: 'Desde aquí la tarjeta se queda la tesela.', 'zh-Hant': '從這時起，卡片會佔據它的方格。', 'zh-Hans': '从这时起，卡片会占据它的格子。' }),
     alertMs: before(DEFAULT_THRESHOLDS.alertMs, { en: 'Alert colour from (before it starts)', es: 'Color de alerta desde (antes de empezar)', 'zh-Hant': '開始前多久轉為警示色', 'zh-Hans': '开始前多久变为警报色' }),
     holdMs: t.duration({

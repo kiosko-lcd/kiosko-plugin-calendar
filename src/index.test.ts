@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { createBaseContext, defaultsOf, validate, DEFAULT_WORKDAY } from '@kiosko/sdk';
+import { createBaseContext, defaultsOf, errorMessage, validate, DEFAULT_WORKDAY } from '@kiosko/sdk';
 import plugin, { agenda, events, next, type Meeting } from './index.ts';
 import { agendaDays } from './draw.ts';
 import { loadIcal } from './ics.ts';
@@ -67,7 +67,13 @@ test('source: without addresses it fails without touching the network', async ()
   const options = validate(events.options!, {}).value;
   assert.deepEqual(options.ignore, ['focus time', 'tiempo de concentración']);
   const ctx = { ...createBaseContext({ now: Date.now(), dataDir: '/nonexistent' }), options, signal: new AbortController().signal, intervalMs: 5 * MIN, timeoutMs: 30_000 };
-  await assert.rejects(events.read!(ctx), /no calendar/);
+  await assert.rejects(events.read!(ctx), (err: unknown) => {
+    assert.match(String((err as Error).message), /No calendar/);
+    // Kiosko shows it in the user's language.
+    assert.match(errorMessage(err, 'zh-TW'), /沒有行事曆/);
+    assert.match(errorMessage(err, 'zh-CN'), /没有日历/);
+    return true;
+  });
 });
 
 const skip = (await loadIcal()) ? false : 'optional dependency ical.js not installed';
@@ -162,4 +168,15 @@ test('next: a calendar filter and tentative meetings', () => {
   ];
   assert.equal(next.urgent!(state(o, list, start - 3 * MIN)), false, 'neither claims the tile');
   assert.equal(next.urgent!(state({ ...o, calendars: [] }, list, start - 3 * MIN)), true);
+});
+
+test('agenda day headers: "Friday 20" in en/es, month and day the CJK way', async () => {
+  const { dayDate } = await import('./draw.ts');
+  const fri = new Date(2026, 10, 20, 12).getTime();
+  assert.equal(dayDate(fri, 'en'), 'Friday 20');
+  assert.equal(dayDate(fri, 'es'), 'viernes 20');
+  assert.equal(dayDate(fri, 'zh-TW'), '11月20日 星期五');
+  assert.equal(dayDate(fri, 'zh-Hans'), '11月20日 星期五');
+  assert.equal(dayDate(fri, 'ja'), '11月20日 金曜日');
+  assert.equal(dayDate(fri, 'ko'), '11월 20일 금요일');
 });

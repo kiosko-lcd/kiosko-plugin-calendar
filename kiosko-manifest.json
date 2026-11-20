@@ -170,7 +170,7 @@
                 "en": "Further away it is drawn dim and lets the panel sleep.",
                 "es": "Más lejos se pinta tenue y deja dormir al panel.",
                 "zh-Hant": "離開始還早時會以暗色繪製，並讓面板休眠。",
-                "zh-Hans": "离开始还早时以暗色绘制，并让屏幕休眠。"
+                "zh-Hans": "离开始还早时以暗色绘制，并让副屏休眠。"
               },
               "unit": "ms"
             },
@@ -473,7 +473,7 @@
                 "en": "With no meeting this close, it lets the panel sleep.",
                 "es": "Sin una reunión así de cerca, deja dormir al panel.",
                 "zh-Hant": "沒有這麼近的會議時，會讓面板休眠。",
-                "zh-Hans": "没有这么近的会议时，会让屏幕休眠。"
+                "zh-Hans": "没有这么近的会议时，会让副屏休眠。"
               },
               "unit": "ms"
             },
