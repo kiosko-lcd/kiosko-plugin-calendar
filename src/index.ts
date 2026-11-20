@@ -248,6 +248,7 @@ export default definePlugin({
   id: 'calendar',
   name: { en: 'Calendar', es: 'Calendario', 'zh-Hant': '行事曆', 'zh-Hans': '日历' },
   version: '0.2.1',
+  languages: ['en', 'es', 'zh-Hant', 'zh-Hans'],
   sdk: '^0.2.0',
   permissions: { network: ['user'] },
   description: {
