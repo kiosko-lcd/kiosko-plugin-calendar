@@ -264,7 +264,7 @@ export const agenda = defineWidget({
 export default definePlugin({
   id: 'calendar',
   name: { en: 'Calendar', es: 'Calendario', de: 'Kalender', 'zh-Hant': '行事曆', 'zh-Hans': '日历' },
-  version: '0.2.1',
+  version: '0.2.2',
   languages: ['en', 'es', 'de', 'zh-Hant', 'zh-Hans'],
   sdk: '^0.2.0',
   permissions: { network: ['user'] },
