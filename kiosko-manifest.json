@@ -9,7 +9,7 @@
     "zh-Hant": "行事曆",
     "zh-Hans": "日历"
   },
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": {
     "en": "Meetings from published ICS calendars (Outlook/Teams, Google…): a countdown to the next one and the agenda of the next days.",
     "es": "Reuniones de calendarios ICS publicados (Outlook/Teams, Google…): una cuenta atrás hasta la siguiente y la agenda de los próximos días.",
@@ -241,7 +241,7 @@
                 "es": "Alerta desde (antes de empezar)",
                 "de": "Alarm ab (vor Beginn)",
                 "zh-Hant": "開始前多久進入警示",
-                "zh-Hans": "开始前多久进入警报"
+                "zh-Hans": "开始前多久进入警示"
               },
               "help": {
                 "en": "From here until it ends, it takes its tile over.",
@@ -547,7 +547,7 @@
                 "es": "Color de alerta desde (antes de empezar)",
                 "de": "Alarmfarbe ab (vor Beginn)",
                 "zh-Hant": "開始前多久轉為警示色",
-                "zh-Hans": "开始前多久变为警报色"
+                "zh-Hans": "开始前多久变为警示色"
               },
               "unit": "ms"
             },
@@ -636,7 +636,7 @@
                 "en": "The secret address of a published calendar (Outlook on the web: Settings → Calendar → Shared calendars → Publish a calendar → ICS). Anyone with it can read your agenda: treat it like a password.",
                 "es": "La dirección secreta de un calendario publicado (Outlook web: Configuración → Calendario → Calendarios compartidos → Publicar un calendario → ICS). Quien la tenga lee tu agenda: trátala como una contraseña.",
                 "de": "Die geheime Adresse eines veröffentlichten Kalenders (Outlook im Web: Einstellungen → Kalender → Freigegebene Kalender → Kalender veröffentlichen → ICS). Wer sie hat, kann deine Termine lesen: Behandle sie wie ein Passwort.",
-                "zh-Hant": "已發布行事曆的私密網址（Outlook 網頁版：設定 → 行事曆 → 共用行事曆 → 發布行事曆 → ICS）。任何人拿到它都能讀取你的行程：請像密碼一樣保管。",
+                "zh-Hant": "已發布行事曆的私密網址（Outlook 網頁版：設定 → 行事曆 → 共用行事曆 → 發佈行事曆 → ICS）。任何人拿到它都能讀取你的行程：請像密碼一樣保管。",
                 "zh-Hans": "已发布日历的私密网址（Outlook 网页版：设置 → 日历 → 共享日历 → 发布日历 → ICS）。任何人拿到它都能读取你的日程：请像密码一样保管。"
               }
             },
