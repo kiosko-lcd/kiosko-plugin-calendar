@@ -9,7 +9,7 @@
     "zh-Hant": "行事曆",
     "zh-Hans": "日历"
   },
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": {
     "en": "Meetings from published ICS calendars (Outlook/Teams, Google…): a countdown to the next one and the agenda of the next days.",
     "es": "Reuniones de calendarios ICS publicados (Outlook/Teams, Google…): una cuenta atrás hasta la siguiente y la agenda de los próximos días.",
@@ -607,6 +607,7 @@
       },
       "polled": true,
       "intervalMs": 300000,
+      "profiles": true,
       "options": {
         "default": {
           "urls": [],
