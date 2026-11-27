@@ -280,3 +280,14 @@ test('widget: options, and idle outside work hours', () => {
   assert.equal(widgetState(weekLoadWidget, 'idle', { now: at(26, 20) }), true);
   assert.equal(widgetState(weekLoadWidget, 'idle', { now: at(28, 11) }), true, 'Saturday');
 });
+
+test('widget: empty only without working days, never before the calendar comes', () => {
+  const empty = (workday: Workday, sources: Record<string, unknown>, days = 'week') =>
+    weekLoadWidget.empty!({ options: { ...defaultsOf(weekLoadWidget.options!), days }, data: undefined, sources, now: THU, working: true, workday } as never);
+  for (const days of ['week', 'rest', 'next5']) {
+    assert.equal(empty({ ...DEFAULT_WORKDAY, days: [] }, { [SOURCE]: [] }, days), true, `${days}: no working days`);
+    assert.equal(empty(DEFAULT_WORKDAY, { [SOURCE]: [] }, days), false, `${days}: a free week is worth seeing`);
+    assert.equal(empty(DEFAULT_WORKDAY, { [SOURCE]: demoWeek(THU, 'en') }, days), false, `${days}: meetings`);
+    assert.equal(empty({ ...DEFAULT_WORKDAY, days: [] }, {}, days), false, `${days}: no calendar yet is loading`);
+  }
+});

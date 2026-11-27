@@ -20,7 +20,7 @@ import { agendaDays, drawAgenda, drawMessage, drawNext, type Painter } from './d
 import { fetchAll } from './feed.ts';
 import { DEFAULT_IGNORE, icsUrls, loadIcal, mergeMeetings, parseMeetings, type Meeting } from './ics.ts';
 import { agendaNow, dayStart, DEFAULT_THRESHOLDS, pickNext, selectMeetings, TEXTS } from './meeting.ts';
-import { DAYS_MODES, weekLoad } from './week.ts';
+import { DAYS_MODES, daysOf, weekLoad } from './week.ts';
 import { drawWeek, WEEK_TEXTS } from './week-draw.ts';
 
 export type { Meeting };
@@ -341,6 +341,8 @@ export const weekLoadWidget = defineWidget({
     if (!week.days.length) return drawMessage(p, ctx.box, ctx.t(WEEK_TEXTS.noDays), ctx.t(WEEK_TEXTS.noDaysHelp));
     drawWeek(p, ctx.box, week, ctx.options);
   },
+  // No working days to show (Settings → Work hours has none): only a hint. Which day the week starts on doesn't change that.
+  empty: ({ sources, options, now, workday }) => !!meetingsOf(sources, options) && !daysOf(now, workday, options.days, 'en').days.length,
   // Outside work hours it lets the panel sleep.
   idle: ({ now, workday }) => !isWorkingAt(workday, now),
   demo: ({ now, locale }) => ({ sources: { [SOURCE]: demoWeek(now, locale) } }),
@@ -349,7 +351,7 @@ export const weekLoadWidget = defineWidget({
 export default definePlugin({
   id: 'calendar',
   name: { en: 'Calendar', es: 'Calendario', de: 'Kalender', 'zh-Hant': '行事曆', 'zh-Hans': '日历' },
-  version: '0.4.0',
+  version: '0.4.1',
   languages: ['en', 'es', 'de', 'zh-Hant', 'zh-Hans'],
   sdk: '^0.2.0',
   permissions: { network: ['user'] },
