@@ -96,6 +96,12 @@ Meetings of this week and the next days from one or more published calendars (IC
 | `horizonDays` | number | `6` | Days ahead. Besides today. The agenda shows as many days as this plus one, at most. |
 | `includeAllDay` | boolean | `false` | Include all-day events. Holidays, trips, on-call days: listed at the top of their day in the agenda. They never count as the next meeting. |
 
+### Several accounts
+
+One source already reads up to ten calendars and merges them, and each card can keep some by name (**Calendars**): that is the simplest way to see work and personal meetings together, and the right one for the countdown, which should see the personal appointment that clashes with work.
+
+To keep them apart instead, Kiosko 0.2.12 and later give the source **profiles**: named configurations, each with its own addresses and options, say «Work» with the Outlook calendar and «Personal» with the family and holiday ones, its own days ahead and ignored titles. Each profile is read on its own and keeps its own copies on disk, and each card picks its profile in the inspector (**Source profile**; **New profile…** makes one from the tile), where the Calendars filter lists that profile's calendars. A screen others see can then show the work agenda alone, with no filter to get wrong. Settings → Data sources shows the profiles as tabs. A card with no profile reads the source's own options, as before; with older Kiosko versions there is one set of calendars.
+
 ## Development
 
 ```sh

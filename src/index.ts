@@ -10,7 +10,9 @@
  *     day of the week, and the next free block for deep work.
  *
  * The source keeps a copy of every feed on disk (named after a hash of the
- * address, which is a secret) and falls back to it when offline.
+ * address, which is a secret) and falls back to it when offline. It has
+ * profiles (Kiosko 0.2.12 on), for calendars kept apart: «Work» and
+ * «Personal», each with its own addresses, copies and options.
  */
 import { definePlugin, defineSource, defineWidget, drawEmpty, isWorkingAt, listOptions, PluginError, t, type Localized, type RenderContext } from '@kiosko/sdk';
 import { demoMeetings, demoWeek } from './demo.ts';
@@ -89,7 +91,7 @@ export const events = defineSource({
     const ICAL = await loadIcal();
     if (!ICAL) throw new Error('the optional dependency ical.js is not installed (npm install ical.js)');
     const timeoutMs = Math.max(1000, Math.round((ctx.timeoutMs * 2) / 3));
-    const feeds = await fetchAll(urls, { dir: ctx.cacheDir || ctx.dataDir, timeoutMs, signal: ctx.signal, log: ctx.log });
+    const feeds = await fetchAll(urls, { dir: ctx.cacheDir || ctx.dataDir, timeoutMs, signal: ctx.signal, log: ctx.log, profile: (ctx as { profile?: string }).profile });
     if (!feeds.length) throw new Error(`${urls.length > 1 ? 'no calendar' : 'the calendar'} could be read, and there is no copy on disk`);
     // From a week back: the week-load card shows the days of this week already gone.
     const from = dayStart(ctx.now, -6);
@@ -118,6 +120,8 @@ export const events = defineSource({
   choices: {
     calendars: (meetings) => [...new Set((Array.isArray(meetings) ? meetings : []).flatMap((m) => m.calendars ?? []))].sort((a, b) => a.localeCompare(b)).map((value) => ({ value })),
   },
+  // Separate sets of calendars («Work», «Personal»), each with its own copies on disk: Kiosko 0.2.12 and later; older ones ignore it.
+  ...({ profiles: true } as {}),
 });
 
 /** The source's meetings, as the widget's options select them; undefined before there is a calendar. */
@@ -345,7 +349,7 @@ export const weekLoadWidget = defineWidget({
 export default definePlugin({
   id: 'calendar',
   name: { en: 'Calendar', es: 'Calendario', de: 'Kalender', 'zh-Hant': '行事曆', 'zh-Hans': '日历' },
-  version: '0.3.0',
+  version: '0.4.0',
   languages: ['en', 'es', 'de', 'zh-Hant', 'zh-Hans'],
   sdk: '^0.2.0',
   permissions: { network: ['user'] },

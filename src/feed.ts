@@ -5,6 +5,10 @@
  * A published calendar address is a bearer secret: whoever has it reads the
  * whole agenda. So it never reaches the disk or the log in clear: cache files
  * are named after a hash of it, and messages say "calendar 2 of 3".
+ *
+ * Each source profile (Kiosko 0.2.12 on: «Work», «Personal») keeps its own
+ * copies and its own warnings: the default profile's files are named as
+ * they always were, another profile's carry its id.
  */
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -21,15 +25,19 @@ export interface FeedOptions {
   dir: string;
   timeoutMs: number;
   signal?: AbortSignal;
+  /** The source profile being read (`ctx.profile`); undefined for the default one. */
+  profile?: string | undefined;
 }
 
 /**
  * Where the local copy of a feed lives. Named after the URL (hashed), not a
  * counter: adding or removing calendars doesn't shuffle the files nor leave a
- * feed reading another one's copy.
+ * feed reading another one's copy. A profile other than the default one has
+ * its own (`feed-<profile>-<hash>`), so profiles never share a copy or an ETag.
  */
-export function cacheFiles(dir: string, url: string): { ics: string; etag: string; key: string } {
-  const key = createHash('sha256').update(url).digest('hex').slice(0, 16);
+export function cacheFiles(dir: string, url: string, profile?: string): { ics: string; etag: string; key: string } {
+  const hash = createHash('sha256').update(url).digest('hex').slice(0, 16);
+  const key = profile ? `${profile.replace(/[^a-z0-9_-]/gi, '_')}-${hash}` : hash;
   return { ics: join(dir, `feed-${key}.ics`), etag: join(dir, `feed-${key}.etag`), key };
 }
 
@@ -67,7 +75,7 @@ export interface FeedResult {
  * hide it forever, so it throws, as does any failure with nothing on disk.
  */
 export async function fetchIcs(url: string, o: FeedOptions): Promise<FeedResult> {
-  const files = cacheFiles(o.dir, url);
+  const files = cacheFiles(o.dir, url, o.profile);
   const cached = readIfExists(files.ics);
   const etag = readIfExists(files.etag);
   const timeout = AbortSignal.timeout(o.timeoutMs);
@@ -103,7 +111,7 @@ export async function fetchIcs(url: string, o: FeedOptions): Promise<FeedResult>
   }
 }
 
-/** Which feeds were already reported broken, by hashed key: one warning per breakage, not one every five minutes. */
+/** Which feeds were already reported broken, by hashed key (the profile's own): one warning per breakage, not one every five minutes. */
 const warned = new Set<string>();
 
 /**
@@ -115,7 +123,7 @@ export async function fetchAll(urls: readonly string[], o: FeedOptions & { log?:
   const settled = await Promise.allSettled(urls.map((u) => fetchIcs(u, o)));
   const out: string[] = [];
   settled.forEach((r, i) => {
-    const { key } = cacheFiles(o.dir, urls[i]!);
+    const { key } = cacheFiles(o.dir, urls[i]!, o.profile);
     const label = urls.length > 1 ? `calendar ${i + 1} of ${urls.length}` : 'the calendar';
     const problem = r.status === 'rejected' ? `could not read ${label}: ${r.reason instanceof Error ? r.reason.message : 'unknown error'}` : r.value.cached ? `${label} is unreachable (${r.value.error}); using the copy on disk` : null;
     if (r.status === 'fulfilled') out.push(r.value.ics);
