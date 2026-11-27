@@ -1,6 +1,6 @@
 # kiosko-plugin-calendar
 
-Meetings from published ICS calendars (Outlook/Teams, Google…): a countdown to the next one and the agenda of the next days.
+Meetings from published ICS calendars (Outlook/Teams, Google…): a countdown to the next one, the agenda of the next days and how full your week is.
 
 A plugin for [Kiosko](https://github.com/kiosko-lcd/kiosko), the widget mosaic for small USB LCD panels.
 
@@ -64,11 +64,30 @@ Uses: `calendar/events`.
 | `alertMs` | duration (ms) | `180000` | Alert colour from (before it starts) |
 | `holdMs` | duration (ms) | `600000` | Keep the tile after a start. Once you know where you are, the tile goes back to its rotation. |
 
+### Your week in meetings — `calendar/week-load`
+
+Meeting hours against free hours on each working day of the week, the busiest days in amber or red, the next free block long enough for deep work, and the week’s total.
+
+![Your week in meetings](docs/week-load.png)
+
+Uses: `calendar/events`.
+
+| Option | Type | Default | |
+|---|---|---|---|
+| `days` | `week` \| `rest` \| `next5` | `"week"` | Days. The working days and hours of Settings → Work hours; holidays are days off. Once the week’s work is over, the whole week and its rest are the coming one. The source must look as many days ahead. |
+| `blockMs` | duration (ms) | `7200000` | Free block to look for. The next stretch without meetings at least this long, within work hours: for deep work. |
+| `warnPercent` | number | `50` | Amber from. Share of the day’s work hours in meetings. |
+| `alertPercent` | number | `75` | Red from. Share of the day’s work hours in meetings. |
+| `hideTentative` | boolean | `false` | Don’t count tentative meetings. Invitations not accepted yet. All-day events and those marked free never count. |
+| `calendars` | list | `[]` | Calendars. Empty: all. Names as each calendar calls itself (Work, Holidays…), comma-separated; * matches anything, a leading ! leaves out. |
+
+Meeting time is the time inside each day's work hours (Kiosko → Settings → Work hours) taken by at least one meeting: two meetings at the same hour count once; all-day events, events marked free and declined meetings (Outlook keeps them as free, or drops them) don't count; holidays are days off. Each day is a strip of its work hours on a common time axis, with its meetings filled in and the next free block outlined.
+
 ## Data sources
 
 ### Calendar meetings — `calendar/events`
 
-Meetings of today and the next days from one or more published calendars (ICS). Free and focus-time events are left out, and all-day ones unless you ask for them. Read every 5 min while a widget uses it. Options are set once in Kiosko → Settings → Data sources.
+Meetings of this week and the next days from one or more published calendars (ICS). Free and focus-time events are left out, and all-day ones unless you ask for them. Read every 5 min while a widget uses it. Options are set once in Kiosko → Settings → Data sources.
 
 | Option | Type | Default | |
 |---|---|---|---|

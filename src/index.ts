@@ -6,22 +6,27 @@
  *     theme semaphore as it nears (dim → info → warn → alert) and takes its
  *     tile over when it's about to start and while it lasts.
  *   - `calendar/agenda`: the meetings left today and those of the next days.
+ *   - `calendar/week-load`: meeting hours against free hours on each working
+ *     day of the week, and the next free block for deep work.
  *
  * The source keeps a copy of every feed on disk (named after a hash of the
  * address, which is a secret) and falls back to it when offline. It has
  * profiles (Kiosko 0.2.12 on), for calendars kept apart: «Work» and
  * «Personal», each with its own addresses, copies and options.
  */
-import { definePlugin, defineSource, defineWidget, drawEmpty, listOptions, PluginError, t, type Localized, type RenderContext } from '@kiosko/sdk';
-import { demoMeetings } from './demo.ts';
+import { definePlugin, defineSource, defineWidget, drawEmpty, isWorkingAt, listOptions, PluginError, t, type Localized, type RenderContext } from '@kiosko/sdk';
+import { demoMeetings, demoWeek } from './demo.ts';
 import { agendaDays, drawAgenda, drawMessage, drawNext, type Painter } from './draw.ts';
 import { fetchAll } from './feed.ts';
 import { DEFAULT_IGNORE, icsUrls, loadIcal, mergeMeetings, parseMeetings, type Meeting } from './ics.ts';
 import { agendaNow, dayStart, DEFAULT_THRESHOLDS, pickNext, selectMeetings, TEXTS } from './meeting.ts';
+import { DAYS_MODES, weekLoad } from './week.ts';
+import { drawWeek, WEEK_TEXTS } from './week-draw.ts';
 
 export type { Meeting };
 export { agendaNow, meetingLevel, pickNext, selectMeetings, type Level, type Thresholds } from './meeting.ts';
-export { demoMeetings };
+export { demoMeetings, demoWeek };
+export { weekLoad, type DayLoad, type DaysMode, type WeekLoad, type WeekOptions } from './week.ts';
 
 const SOURCE = 'calendar/events';
 const MIN = 60_000;
@@ -30,11 +35,11 @@ export const events = defineSource({
   id: 'events',
   name: { en: 'Calendar meetings', es: 'Reuniones del calendario', de: 'Kalendertermine', 'zh-Hant': '行事曆會議', 'zh-Hans': '日历会议' },
   description: {
-    en: 'Meetings of today and the next days from one or more published calendars (ICS). Free and focus-time events are left out, and all-day ones unless you ask for them.',
-    es: 'Las reuniones de hoy y de los próximos días de uno o varios calendarios publicados (ICS). Se dejan fuera los eventos libres y los de concentración, y los de todo el día salvo que los pidas.',
-    de: 'Die Termine von heute und den nächsten Tagen aus einem oder mehreren veröffentlichten Kalendern (ICS). Als frei markierte Termine und Fokuszeit bleiben außen vor, ganztägige ebenso, sofern du sie nicht anforderst.',
-    'zh-Hant': '從一個或多個已發布的行事曆（ICS）取得今天及接下來幾天的會議。空閒與專注時間的活動會排除，全天活動也會排除，除非你要求顯示。',
-    'zh-Hans': '从一个或多个已发布的日历（ICS）获取今天及接下来几天的会议。空闲和专注时间的事件会被排除，全天事件也会排除，除非你要求显示。',
+    en: 'Meetings of this week and the next days from one or more published calendars (ICS). Free and focus-time events are left out, and all-day ones unless you ask for them.',
+    es: 'Las reuniones de esta semana y de los próximos días de uno o varios calendarios publicados (ICS). Se dejan fuera los eventos libres y los de concentración, y los de todo el día salvo que los pidas.',
+    de: 'Die Termine dieser Woche und der nächsten Tage aus einem oder mehreren veröffentlichten Kalendern (ICS). Als frei markierte Termine und Fokuszeit bleiben außen vor, ganztägige ebenso, sofern du sie nicht anforderst.',
+    'zh-Hant': '從一個或多個已發布的行事曆（ICS）取得本週及接下來幾天的會議。空閒與專注時間的活動會排除，全天活動也會排除，除非你要求顯示。',
+    'zh-Hans': '从一个或多个已发布的日历（ICS）获取本周及接下来几天的会议。空闲和专注时间的事件会被排除，全天事件也会排除，除非你要求显示。',
   },
   options: t.object({
     urls: t.list(
@@ -88,7 +93,8 @@ export const events = defineSource({
     const timeoutMs = Math.max(1000, Math.round((ctx.timeoutMs * 2) / 3));
     const feeds = await fetchAll(urls, { dir: ctx.cacheDir || ctx.dataDir, timeoutMs, signal: ctx.signal, log: ctx.log, profile: (ctx as { profile?: string }).profile });
     if (!feeds.length) throw new Error(`${urls.length > 1 ? 'no calendar' : 'the calendar'} could be read, and there is no copy on disk`);
-    const from = dayStart(ctx.now);
+    // From a week back: the week-load card shows the days of this week already gone.
+    const from = dayStart(ctx.now, -6);
     const until = dayStart(ctx.now, o.horizonDays + 1) - 1;
     const all: Meeting[] = [];
     let unreadable = 0;
@@ -265,23 +271,98 @@ export const agenda = defineWidget({
   demo: ({ now, locale }) => ({ sources: { [SOURCE]: demoMeetings(now, locale) } }),
 });
 
+const HOUR = 60 * MIN;
+
+/** The week's load, worked out once a minute per tile (the render, `idle` and the tests ask for the same). */
+let weekMemo: { key: string; list: unknown; value: ReturnType<typeof weekLoad> } | null = null;
+const weekOf = (list: Meeting[], src: unknown, now: number, workday: RenderContext<unknown, unknown>['workday'], o: Parameters<typeof weekLoad>[3], locale: string) => {
+  const key = `${Math.floor(now / MIN)}|${locale}|${JSON.stringify(workday)}|${JSON.stringify(o)}|${list.length}`;
+  if (weekMemo && weekMemo.key === key && weekMemo.list === src) return weekMemo.value;
+  const value = weekLoad(list, now, workday, o, locale);
+  weekMemo = { key, list: src, value };
+  return value;
+};
+
+const percent = (def: number, label: Localized, help?: Localized) => t.integer({ default: def, min: 0, max: 100, unit: '%', slider: true, label, ...(help ? { help } : {}) });
+
+export const weekLoadWidget = defineWidget({
+  id: 'week-load',
+  name: { en: 'Your week in meetings', es: 'Tu semana en reuniones', de: 'Deine Woche in Terminen', 'zh-Hant': '你的一週會議', 'zh-Hans': '你的一周会议' },
+  description: {
+    en: 'Meeting hours against free hours on each working day of the week, the busiest days in amber or red, the next free block long enough for deep work, and the week’s total.',
+    es: 'Horas de reunión frente a horas libres en cada día laborable de la semana, los días más cargados en ámbar o rojo, el próximo hueco largo para trabajo profundo y el total de la semana.',
+    de: 'Terminstunden gegenüber freien Stunden an jedem Arbeitstag der Woche, die vollsten Tage in Gelb oder Rot, der nächste freie Block, der für konzentriertes Arbeiten reicht, und die Summe der Woche.',
+    'zh-Hant': '本週每個工作日的會議時數與空閒時數、最滿的日子以琥珀色或紅色標示、下一段足以專注工作的空檔，以及本週總計。',
+    'zh-Hans': '本周每个工作日的会议时长与空闲时长、最满的日子以琥珀色或红色标示、下一段足以专注工作的空档，以及本周总计。',
+  },
+  icon: 'calendar-range',
+  category: 'time',
+  tags: ['calendar', 'calendario', 'meeting', 'reunión', 'week', 'semana', 'focus', 'deep work', 'outlook', 'teams', 'ics'],
+  size: { min: { w: 160, h: 100 }, preferred: { w: 480, h: 260 } },
+  sources: [SOURCE],
+  options: t.object({
+    days: t.enum(DAYS_MODES, {
+      default: 'week',
+      labels: {
+        week: { en: 'The whole week', es: 'Toda la semana', de: 'Die ganze Woche', 'zh-Hant': '整週', 'zh-Hans': '整周' },
+        rest: { en: 'The rest of the week', es: 'Lo que queda de semana', de: 'Der Rest der Woche', 'zh-Hant': '本週剩餘的日子', 'zh-Hans': '本周剩余的日子' },
+        next5: { en: 'The next 5 working days', es: 'Los próximos 5 días laborables', de: 'Die nächsten 5 Arbeitstage', 'zh-Hant': '接下來 5 個工作日', 'zh-Hans': '接下来 5 个工作日' },
+      },
+      label: { en: 'Days', es: 'Días', de: 'Tage', 'zh-Hant': '天數', 'zh-Hans': '天数' },
+      help: {
+        en: 'The working days and hours of Settings → Work hours; holidays are days off. Once the week’s work is over, the whole week and its rest are the coming one. The source must look as many days ahead.',
+        es: 'Los días y horas de Ajustes → Jornada; los festivos no se trabajan. Acabada la semana, toda la semana y lo que queda de ella son la que viene. La fuente debe mirar esos días por delante.',
+        de: 'Die Arbeitstage und -zeiten aus Einstellungen → Arbeitszeit; Feiertage sind frei. Ist die Arbeitswoche vorbei, zeigen „ganze Woche“ und „Rest der Woche“ die kommende. Die Datenquelle muss so viele Tage vorausschauen.',
+        'zh-Hant': '使用「設定 → 工作時間」中的工作日與時間；假日不上班。本週工作結束後，「整週」與「剩餘的日子」會改顯示下一週。資料來源須往後查看足夠的天數。',
+        'zh-Hans': '使用“设置 → 工作时间”中的工作日与时间；假日不上班。本周工作结束后，“整周”和“剩余的日子”会改为显示下一周。数据源须往后查看足够的天数。',
+      },
+    }),
+    blockMs: t.duration({
+      default: 2 * HOUR,
+      min: 15 * MIN,
+      max: 8 * HOUR,
+      label: { en: 'Free block to look for', es: 'Hueco libre que buscar', de: 'Gesuchter freier Block', 'zh-Hant': '要找的空檔長度', 'zh-Hans': '要找的空档长度' },
+      help: { en: 'The next stretch without meetings at least this long, within work hours: for deep work.', es: 'El próximo tramo sin reuniones de al menos esto, dentro de la jornada: para trabajo profundo.', de: 'Der nächste Abschnitt ohne Termine, mindestens so lang, innerhalb der Arbeitszeit: für konzentriertes Arbeiten.', 'zh-Hant': '工作時間內下一段至少這麼長、沒有會議的時段：用來專注工作。', 'zh-Hans': '工作时间内下一段至少这么长、没有会议的时段：用来专注工作。' },
+    }),
+    warnPercent: percent(50, { en: 'Amber from', es: 'Ámbar desde', de: 'Gelb ab', 'zh-Hant': '琥珀色起點', 'zh-Hans': '琥珀色起点' }, { en: 'Share of the day’s work hours in meetings.', es: 'Parte de la jornada de ese día en reuniones.', de: 'Anteil der Arbeitszeit des Tages in Terminen.', 'zh-Hant': '當天工作時間中會議所佔的比例。', 'zh-Hans': '当天工作时间中会议所占的比例。' }),
+    alertPercent: percent(75, { en: 'Red from', es: 'Rojo desde', de: 'Rot ab', 'zh-Hant': '紅色起點', 'zh-Hans': '红色起点' }, { en: 'Share of the day’s work hours in meetings.', es: 'Parte de la jornada de ese día en reuniones.', de: 'Anteil der Arbeitszeit des Tages in Terminen.', 'zh-Hant': '當天工作時間中會議所佔的比例。', 'zh-Hans': '当天工作时间中会议所占的比例。' }),
+    hideTentative: t.boolean({
+      label: { en: 'Don’t count tentative meetings', es: 'No contar las provisionales', de: 'Vorläufige Termine nicht zählen', 'zh-Hant': '不計入暫定的會議', 'zh-Hans': '不计入暂定的会议' },
+      help: { en: 'Invitations not accepted yet. All-day events and those marked free never count.', es: 'Invitaciones aún sin aceptar. Los eventos de todo el día y los marcados como libres nunca cuentan.', de: 'Noch nicht angenommene Einladungen. Ganztägige und als frei markierte Termine zählen nie.', 'zh-Hant': '尚未接受的邀請。全天活動與標為空閒的活動一律不計。', 'zh-Hans': '尚未接受的邀请。全天事件和标为空闲的事件一律不计。' },
+    }),
+    calendars: calendarsFilter(),
+  }),
+  redraw: 'minute',
+  render(g, ctx) {
+    const p = painter(g, ctx);
+    const list = meetingsOf(ctx.sources, ctx.options);
+    if (!list) return drawMessage(p, ctx.box, ctx.t(TEXTS.noCalendar), ctx.t(TEXTS.noCalendarHelp));
+    const week = weekOf(list, ctx.sources[SOURCE], ctx.now, ctx.workday, ctx.options, ctx.locale);
+    if (!week.days.length) return drawMessage(p, ctx.box, ctx.t(WEEK_TEXTS.noDays), ctx.t(WEEK_TEXTS.noDaysHelp));
+    drawWeek(p, ctx.box, week, ctx.options);
+  },
+  // Outside work hours it lets the panel sleep.
+  idle: ({ now, workday }) => !isWorkingAt(workday, now),
+  demo: ({ now, locale }) => ({ sources: { [SOURCE]: demoWeek(now, locale) } }),
+});
+
 export default definePlugin({
   id: 'calendar',
   name: { en: 'Calendar', es: 'Calendario', de: 'Kalender', 'zh-Hant': '行事曆', 'zh-Hans': '日历' },
-  version: '0.3.0',
+  version: '0.4.0',
   languages: ['en', 'es', 'de', 'zh-Hant', 'zh-Hans'],
   sdk: '^0.2.0',
   permissions: { network: ['user'] },
   description: {
-    en: 'Meetings from published ICS calendars (Outlook/Teams, Google…): a countdown to the next one and the agenda of the next days.',
-    es: 'Reuniones de calendarios ICS publicados (Outlook/Teams, Google…): una cuenta atrás hasta la siguiente y la agenda de los próximos días.',
-    de: 'Termine aus veröffentlichten ICS-Kalendern (Outlook/Teams, Google…): ein Countdown bis zum nächsten und die Agenda der nächsten Tage.',
-    'zh-Hant': '來自已發布 ICS 行事曆（Outlook/Teams、Google…）的會議：下一場的倒數與接下來幾天的行程。',
-    'zh-Hans': '来自已发布 ICS 日历（Outlook/Teams、Google…）的会议：下一场的倒计时和接下来几天的日程。',
+    en: 'Meetings from published ICS calendars (Outlook/Teams, Google…): a countdown to the next one, the agenda of the next days and how full your week is.',
+    es: 'Reuniones de calendarios ICS publicados (Outlook/Teams, Google…): una cuenta atrás hasta la siguiente, la agenda de los próximos días y lo llena que está tu semana.',
+    de: 'Termine aus veröffentlichten ICS-Kalendern (Outlook/Teams, Google…): ein Countdown bis zum nächsten, die Agenda der nächsten Tage und wie voll deine Woche ist.',
+    'zh-Hant': '來自已發布 ICS 行事曆（Outlook/Teams、Google…）的會議：下一場的倒數、接下來幾天的行程，以及你這週有多滿。',
+    'zh-Hans': '来自已发布 ICS 日历（Outlook/Teams、Google…）的会议：下一场的倒计时、接下来几天的日程，以及你这周有多满。',
   },
   author: 'Kiosko',
   license: 'MIT',
   icon: 'calendar',
   sources: [events],
-  widgets: [next, agenda],
+  widgets: [next, agenda, weekLoadWidget],
 });

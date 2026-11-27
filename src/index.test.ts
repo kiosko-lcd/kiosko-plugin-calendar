@@ -19,7 +19,7 @@ const state = <O>(options: O, list: Meeting[] | undefined, now: number) => ({ op
 test('plugin: ids and the source every widget reads', () => {
   assert.equal(plugin.id, 'calendar');
   assert.deepEqual(plugin.sources?.map((s) => s.id), ['events']);
-  assert.deepEqual(plugin.widgets?.map((w) => w.id), ['next', 'agenda']);
+  assert.deepEqual(plugin.widgets?.map((w) => w.id), ['next', 'agenda', 'week-load']);
   for (const w of plugin.widgets ?? []) assert.deepEqual(w.sources, [SOURCE]);
 });
 

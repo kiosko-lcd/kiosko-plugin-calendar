@@ -31,3 +31,46 @@ export function demoMeetings(now: number, locale = 'en', o: { current?: boolean 
   // Without the one under way, a single tile shows a countdown instead of "now".
   return o.current === false ? all.filter((m) => !(m.startsAt <= now && m.endsAt > now)) : all;
 }
+
+/**
+ * A believable working week for the week-load card, the same pattern every
+ * week around `now` (the one before and the one after too, so the card has
+ * data whichever week it shows): a light Monday, a packed Tuesday with two
+ * meetings on top of each other, a crowded Wednesday with an on-call day and
+ * a tentative one, a Thursday with a two-hour hole in the morning and a quiet
+ * Friday afternoon. Hours inside 9:00–17:00, the default working day.
+ */
+export function demoWeek(now: number, locale = 'en'): Meeting[] {
+  const tr = (text: Localized) => localize(text, locale);
+  const d = new Date(now);
+  const T = {
+    standup: { en: 'Standup', es: 'Daily', de: 'Daily', 'zh-Hant': '每日站會', 'zh-Hans': '每日站会' },
+    planning: { en: 'Sprint planning', es: 'Planificación del sprint', de: 'Sprintplanung', 'zh-Hant': '衝刺規劃', 'zh-Hans': '冲刺规划' },
+    oneOnOne: { en: '1:1 with Jordan', es: '1:1 con Jordan', de: '1:1 mit Jordan', 'zh-Hant': '與 Jordan 一對一', 'zh-Hans': '与 Jordan 一对一' },
+    workshop: { en: 'Roadmap workshop', es: 'Taller de hoja de ruta', de: 'Roadmap-Workshop', 'zh-Hant': '路線圖工作坊', 'zh-Hans': '路线图研讨会' },
+    customer: { en: 'Customer call', es: 'Llamada con el cliente', de: 'Kundentermin', 'zh-Hant': '客戶通話', 'zh-Hans': '客户通话' },
+    review: { en: 'Design review', es: 'Revisión de diseño', de: 'Design-Review', 'zh-Hant': '設計審查', 'zh-Hans': '设计评审' },
+    hiring: { en: 'Interview', es: 'Entrevista', de: 'Vorstellungsgespräch', 'zh-Hant': '面試', 'zh-Hans': '面试' },
+    sync: { en: 'Team sync', es: 'Sincronización del equipo', de: 'Team-Abstimmung', 'zh-Hant': '團隊同步', 'zh-Hans': '团队同步' },
+    onCall: { en: 'On call', es: 'Guardia', de: 'Bereitschaft', 'zh-Hant': '值班', 'zh-Hans': '值班' },
+    demo: { en: 'Customer demo', es: 'Demo con el cliente', de: 'Kundendemo', 'zh-Hant': '客戶展示', 'zh-Hans': '客户演示' },
+    retro: { en: 'Retrospective', es: 'Retrospectiva', de: 'Retrospektive', 'zh-Hant': '回顧會議', 'zh-Hans': '回顾会' },
+  } satisfies Record<string, Localized>;
+  // Weekday (1 = Monday) → [title, from, to, extra]; times as hours.
+  const week: Record<number, [Localized, number, number, Partial<Meeting>?][]> = {
+    1: [[T.standup, 9, 9.25], [T.planning, 10, 11.5], [T.oneOnOne, 15, 15.5]],
+    2: [[T.standup, 9, 9.25], [T.workshop, 9.5, 12], [T.customer, 11.5, 12.5], [T.review, 13, 14], [T.hiring, 14, 15.5], [T.sync, 16, 17]],
+    3: [[T.standup, 9, 9.25], [T.review, 10, 11], [T.customer, 12, 13], [T.workshop, 14, 15, { tentative: true }], [T.sync, 15.5, 16.75]],
+    4: [[T.standup, 9, 9.25], [T.oneOnOne, 11.5, 12.5], [T.sync, 13, 14], [T.hiring, 16, 16.5]],
+    5: [[T.standup, 9, 9.25], [T.demo, 10, 10.5], [T.customer, 11, 12], [T.retro, 15, 16]],
+  };
+  const out: Meeting[] = [];
+  for (let i = -7; i <= 13; i++) {
+    const day = new Date(d.getFullYear(), d.getMonth(), d.getDate() + i);
+    const at = (h: number) => new Date(day.getFullYear(), day.getMonth(), day.getDate(), Math.floor(h), Math.round((h % 1) * 60)).getTime();
+    for (const [title, from, to, extra] of week[day.getDay()] ?? []) out.push({ title: tr(title), startsAt: at(from), endsAt: at(to), ...extra });
+    // An all-day event, which doesn't count as a meeting.
+    if (day.getDay() === 3) out.push({ title: tr(T.onCall), startsAt: day.getTime(), endsAt: new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1).getTime(), allDay: true });
+  }
+  return out.sort((a, b) => a.startsAt - b.startsAt);
+}
